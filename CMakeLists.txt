@@ -76,8 +76,23 @@ target_link_libraries(Tools
         ${OpenCV_LIBS}
 )
 
+# Trackingライブラリ（Phase 2）
+add_library(Tracking STATIC
+    src/tracking/FeatureDetector.cpp
+)
+
+target_include_directories(Tracking
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(Tracking
+    PUBLIC
+        ${OpenCV_LIBS}
+)
+
 # サブディレクトリ（Phase 2以降で追加）
-# add_subdirectory(src/tracking)
 # add_subdirectory(src/ai)
 # add_subdirectory(src/rendering)
 # add_subdirectory(src/gui)
@@ -119,8 +134,20 @@ target_link_libraries(AnnotationTool
         ${OpenCV_LIBS}
 )
 
+# 特徴点検出テストプログラム（Phase 2）
+add_executable(TestFeatureDetection
+    src/tracking/test_feature_detection.cpp
+)
+
+target_link_libraries(TestFeatureDetection
+    PRIVATE
+        Core
+        Tracking
+        ${OpenCV_LIBS}
+)
+
 # インストールターゲット
-install(TARGETS VirtualAd AnnotationTool
+install(TARGETS VirtualAd AnnotationTool TestFeatureDetection
     RUNTIME DESTINATION bin
 )
 
