@@ -506,21 +506,134 @@ def main():
     """Main evaluation function."""
     args = parse_args()
     
+    print("=" * 80)
+    print("METABALL Virtual Ad - Model Evaluation")
+    print("=" * 80)
+    
     # Create output directory
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Output directory: {output_dir}")
+    print(f"\nOutput directory: {output_dir}")
     
     # Device setup
     device = torch.device(args.device)
     print(f"Using device: {device}")
     
-    # TODO: Step 5-3-2 - Load model and implement inference
-    # TODO: Step 5-3-3 - Calculate reprojection errors
-    # TODO: Step 5-3-4 - Generate visualizations
-    # TODO: Step 5-3-5 - Main evaluation loop and report generation
+    # Load or create camera matrix
+    if args.camera_matrix and os.path.exists(args.camera_matrix):
+        print(f"\nLoading camera matrix from: {args.camera_matrix}")
+        with open(args.camera_matrix, 'r') as f:
+            camera_data = json.load(f)
+            camera_matrix = np.array(camera_data['camera_matrix'], dtype=np.float32)
+    else:
+        print(f"\nUsing default camera intrinsics:")
+        print(f"  fx={args.fx}, fy={args.fy}, cx={args.cx}, cy={args.cy}")
+        camera_matrix = np.array([
+            [args.fx, 0, args.cx],
+            [0, args.fy, args.cy],
+            [0, 0, 1]
+        ], dtype=np.float32)
     
-    print("Evaluation script structure ready - implementation pending")
+    # Create dataset
+    print(f"\nLoading dataset from: {args.data_dir}")
+    transforms = get_inference_transforms()
+    dataset = CameraPoseDataset(
+        data_dir=args.data_dir,
+        transform=transforms
+    )
+    
+    data_loader = DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True if device.type == 'cuda' else False
+    )
+    
+    print(f"Dataset size: {len(dataset)} samples")
+    
+    # Create and load model
+    print(f"\nCreating model: {args.model_arch}")
+    model = create_model(args.model_arch, pretrained=False)
+    
+    print(f"Loading checkpoint: {args.checkpoint}")
+    model, checkpoint = load_checkpoint(args.checkpoint, model, device)
+    
+    # Run inference
+    print("\n" + "=" * 80)
+    print("Running Inference")
+    print("=" * 80)
+    pred_poses, gt_poses = run_inference(model, data_loader, device)
+    
+    # Calculate errors
+    print("\n" + "=" * 80)
+    print("Calculating Errors")
+    print("=" * 80)
+    
+    # Reprojection error
+    reproj_errors, reproj_stats = calculate_reprojection_error(
+        pred_poses, gt_poses, camera_matrix
+    )
+    
+    # Pose errors (rotation and translation)
+    rot_errors, trans_errors, pose_stats = calculate_pose_errors(
+        pred_poses, gt_poses
+    )
+    
+    # Combine statistics
+    all_statistics = {
+        'reprojection': reproj_stats,
+        'pose': pose_stats,
+        'dataset_info': {
+            'num_samples': len(dataset),
+            'data_dir': args.data_dir
+        },
+        'model_info': {
+            'architecture': args.model_arch,
+            'checkpoint': args.checkpoint,
+            'epoch': checkpoint.get('epoch', 'unknown') if isinstance(checkpoint, dict) else 'unknown'
+        }
+    }
+    
+    # Save JSON report
+    print("\n" + "=" * 80)
+    print("Saving Results")
+    print("=" * 80)
+    
+    json_path = output_dir / 'evaluation_report.json'
+    with open(json_path, 'w') as f:
+        json.dump(all_statistics, f, indent=2)
+    print(f"Saved evaluation report: {json_path}")
+    
+    # Save detailed results
+    save_detailed_results(
+        pred_poses, gt_poses, reproj_errors, 
+        output_dir, num_samples=args.num_visualizations
+    )
+    
+    # Generate visualizations if requested
+    if args.save_visualizations:
+        visualize_predictions(
+            pred_poses, gt_poses, reproj_errors, 
+            output_dir, num_samples=args.num_visualizations
+        )
+    else:
+        print("\nSkipping visualizations (use --save_visualizations to enable)")
+    
+    # Final summary
+    print("\n" + "=" * 80)
+    print("Evaluation Complete")
+    print("=" * 80)
+    print(f"\nResults saved to: {output_dir}")
+    print(f"  - evaluation_report.json: Overall statistics")
+    print(f"  - detailed_results.txt: Per-sample analysis")
+    if args.save_visualizations:
+        print(f"  - rotation_comparison.png: Rotation predictions vs ground truth")
+        print(f"  - translation_comparison.png: Translation predictions vs ground truth")
+        print(f"  - error_distribution.png: Error histogram")
+        print(f"  - error_per_sample.png: Error timeline")
+    
+    print("\n" + "=" * 80)
 
 
 if __name__ == '__main__':
