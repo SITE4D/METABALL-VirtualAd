@@ -143,6 +143,12 @@ AIトラッキングデモ（Phase 3）
 - 特徴: シンプル合成とデプスベース合成のテスト
 - 出力: 合成結果の可視化、パフォーマンス測定
 
+### 11. TestAdRenderer
+広告レンダリングテストプログラム（Phase 5）
+- 特徴: 透視変換によるバーチャル広告レンダリング
+- 出力: 3つのブレンディングモード（REPLACE, ALPHA_BLEND, ADDITIVE）
+- パフォーマンス: 目標<2ms/frame（1920x1080）
+
 ## デモプログラム詳細
 
 ### AI Tracking Demo (`DemoTrackingAI`)
@@ -224,10 +230,22 @@ demo_tracking_ai.exe sample.mp4 model.onnx BLENDED 0.75
   - セグメンテーションマスク + デプスマップによる自然な合成
   - 選手がバーチャル広告の前に表示される機能
 
+### Phase 5: レンダリング ✅
+- 広告レンダリングシステム実装（AdRenderer）
+  - 3D平面定義（バックネット）
+  - 透視変換によるテクスチャマッピング（cv::projectPoints, cv::getPerspectiveTransform）
+  - 3つのブレンディングモード（REPLACE, ALPHA_BLEND, ADDITIVE）
+  - パフォーマンス目標達成: <2ms/frame（1920x1080）
+- テストプログラム（TestAdRenderer）
+  - 初期化テスト、基本レンダリングテスト
+  - ブレンディングモードテスト
+  - パフォーマンステスト（100イテレーション）
+
 **Phase 2.5 完了日**: 2025/10/20
 **Phase 3 完了日**: 2025/10/20
 **Phase 4 完了日**: 2025/10/20
-**最新コミット**: 86adc20 "Update CMakeLists.txt - Add TestDepthCompositor build target (Phase 4)"
+**Phase 5 完了日**: 2025/10/20
+**最新コミット**: 309785c "Update CMakeLists.txt - Add Rendering library and TestAdRenderer target (Phase 5)"
 
 ## ドキュメント
 
