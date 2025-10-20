@@ -62,11 +62,12 @@ logs/
 *.tmp
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
 *~
+# VSCode personal settings (keep project settings)
+.vscode/*.log
 
 # OS
 .DS_Store

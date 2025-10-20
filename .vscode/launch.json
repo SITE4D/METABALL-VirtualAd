@@ -1,0 +1,84 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: DemoTrackingAI",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/Debug/DemoTrackingAI.exe",
+      "args": [
+        "data/samples/test_video.mp4",
+        "models/camera_pose_net.onnx",
+        "BLENDED",
+        "0.5",
+        "true"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: Build (Debug)"
+    },
+    {
+      "name": "Debug: TestFeatureTracking",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/Debug/TestFeatureTracking.exe",
+      "args": [
+        "data/samples/test_video.mp4"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: Build (Debug)"
+    },
+    {
+      "name": "Debug: TestPoseRefinement",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/Debug/TestPoseRefinement.exe",
+      "args": [
+        "models/camera_pose_net.onnx"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: Build (Debug)"
+    },
+    {
+      "name": "Debug: TestONNXInference",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/Debug/TestONNXInference.exe",
+      "args": [
+        "models/camera_pose_net.onnx",
+        "data/samples/test_frame.jpg"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: Build (Debug)"
+    },
+    {
+      "name": "Run: DemoTrackingAI (Release)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/bin/Release/DemoTrackingAI.exe",
+      "args": [
+        "data/samples/test_video.mp4",
+        "models/camera_pose_net.onnx",
+        "BLENDED",
+        "0.5",
+        "true"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: Build (Release)"
+    }
+  ]
+}

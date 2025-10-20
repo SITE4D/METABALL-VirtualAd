@@ -1,0 +1,17 @@
+{
+  "cmake.configureSettings": {
+    "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+  },
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "cmake.installPrefix": "${workspaceFolder}/install",
+  "cmake.preferredGenerators": [
+    "Visual Studio 17 2022"
+  ],
+  "files.associations": {
+    "*.h": "cpp",
+    "*.cpp": "cpp"
+  },
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "editor.formatOnSave": false,
+  "files.encoding": "utf8"
+}

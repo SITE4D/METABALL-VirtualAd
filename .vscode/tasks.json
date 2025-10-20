@@ -1,0 +1,75 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: Configure",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-B",
+        "${workspaceFolder}/build",
+        "-S",
+        "${workspaceFolder}",
+        "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "-G",
+        "Visual Studio 17 2022"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "CMake: Build (Release)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${workspaceFolder}/build",
+        "--config",
+        "Release",
+        "--parallel",
+        "6"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "dependsOn": [
+        "CMake: Configure"
+      ]
+    },
+    {
+      "label": "CMake: Build (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${workspaceFolder}/build",
+        "--config",
+        "Debug",
+        "--parallel",
+        "6"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build",
+      "dependsOn": [
+        "CMake: Configure"
+      ]
+    },
+    {
+      "label": "CMake: Clean",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${workspaceFolder}/build",
+        "--target",
+        "clean"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
