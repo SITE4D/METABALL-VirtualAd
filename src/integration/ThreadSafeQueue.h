@@ -58,12 +58,79 @@ public:
     ThreadSafeQueue& operator=(ThreadSafeQueue&&) = delete;
     
     // ========================================================================
-    // パブリックメソッド（Part 2で実装）
+    // パブリックメソッド
     // ========================================================================
     
-    bool push(const T& value, int timeout_ms = 1000);
-    bool pop(T& value, int timeout_ms = 1000);
-    size_t size() const;
+    /**
+     * @brief キューに要素を追加（タイムアウトあり）
+     * 
+     * @param value 追加する要素
+     * @param timeout_ms タイムアウト時間（ミリ秒）
+     * @return 成功時true、タイムアウト時false
+     * 
+     * キューが満杯の場合、タイムアウト時間内に空きが出るまで待機します。
+     * タイムアウトに達した場合、falseを返します。
+     */
+    bool push(const T& value, int timeout_ms = 1000) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        
+        // キューに空きができるまで待機（タイムアウトあり）
+        if (!cond_not_full_.wait_for(lock, 
+                std::chrono::milliseconds(timeout_ms),
+                [this] { return queue_.size() < max_size_; })) {
+            return false;  // タイムアウト
+        }
+        
+        // 要素を追加
+        queue_.push(value);
+        
+        // 空でない条件を通知
+        cond_not_empty_.notify_one();
+        
+        return true;
+    }
+    
+    /**
+     * @brief キューから要素を取得（タイムアウトあり）
+     * 
+     * @param value 取得した要素の格納先
+     * @param timeout_ms タイムアウト時間（ミリ秒）
+     * @return 成功時true、タイムアウト時false
+     * 
+     * キューが空の場合、タイムアウト時間内に要素が追加されるまで待機します。
+     * タイムアウトに達した場合、falseを返します。
+     */
+    bool pop(T& value, int timeout_ms = 1000) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        
+        // キューに要素が追加されるまで待機（タイムアウトあり）
+        if (!cond_not_empty_.wait_for(lock,
+                std::chrono::milliseconds(timeout_ms),
+                [this] { return !queue_.empty(); })) {
+            return false;  // タイムアウト
+        }
+        
+        // 要素を取得
+        value = queue_.front();
+        queue_.pop();
+        
+        // 満杯でない条件を通知
+        cond_not_full_.notify_one();
+        
+        return true;
+    }
+    
+    /**
+     * @brief キューのサイズを取得
+     * 
+     * @return 現在のキューのサイズ
+     * 
+     * この関数はスレッドセーフです。
+     */
+    size_t size() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return queue_.size();
+    }
     
 private:
     std::queue<T> queue_;                     ///< 内部キュー
