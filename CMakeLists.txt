@@ -118,6 +118,7 @@ target_link_libraries(Inference
 # Keyerライブラリ（Phase 4）
 add_library(Keyer STATIC
     src/keyer/SegmentationInference.cpp
+    src/keyer/DepthEstimator.cpp
 )
 
 target_include_directories(Keyer
