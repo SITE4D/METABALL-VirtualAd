@@ -115,6 +115,23 @@ target_link_libraries(Inference
         Tracking
 )
 
+# Keyerライブラリ（Phase 4）
+add_library(Keyer STATIC
+    src/keyer/SegmentationInference.cpp
+)
+
+target_include_directories(Keyer
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(Keyer
+    PUBLIC
+        ${OpenCV_LIBS}
+        onnxruntime::onnxruntime
+)
+
 # サブディレクトリ（Phase 2以降で追加）
 # add_subdirectory(src/ai)
 # add_subdirectory(src/rendering)
@@ -232,6 +249,18 @@ target_link_libraries(DemoTrackingAI
         onnxruntime::onnxruntime
 )
 
+# セグメンテーションテストプログラム（Phase 4）
+add_executable(TestSegmentation
+    src/keyer/test_segmentation.cpp
+)
+
+target_link_libraries(TestSegmentation
+    PRIVATE
+        Keyer
+        ${OpenCV_LIBS}
+        onnxruntime::onnxruntime
+)
+
 # インストールターゲット
 install(TARGETS 
     VirtualAd 
@@ -242,6 +271,7 @@ install(TARGETS
     TestONNXInference
     TestPoseRefinement
     DemoTrackingAI
+    TestSegmentation
     RUNTIME DESTINATION bin
 )
 
