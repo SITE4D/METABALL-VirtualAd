@@ -13,6 +13,7 @@ import os
 import sys
 from pathlib import Path
 
+import cv2
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -104,6 +105,162 @@ def run_inference(model, data_loader, device):
     print(f"Inference complete: {len(predictions)} samples processed")
     
     return predictions, ground_truths
+
+
+def calculate_reprojection_error(pred_poses, gt_poses, camera_matrix, object_points=None):
+    """
+    Calculate reprojection error between predicted and ground truth poses.
+    
+    Args:
+        pred_poses: Predicted poses [N, 6] (rvec[3] + tvec[3])
+        gt_poses: Ground truth poses [N, 6]
+        camera_matrix: Camera intrinsic matrix [3, 3]
+        object_points: 3D object points for reprojection [M, 3]
+                      If None, uses unit cube corners
+        
+    Returns:
+        errors: Reprojection errors per sample [N]
+        statistics: Dictionary with mean, median, std, max errors
+    """
+    if object_points is None:
+        # Default: unit cube corners for visualization
+        object_points = np.array([
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+            [1, 1, 0],
+            [1, 0, 1],
+            [0, 1, 1],
+            [1, 1, 1]
+        ], dtype=np.float32)
+    
+    errors = []
+    dist_coeffs = np.zeros(5)  # Assuming no distortion
+    
+    print("Calculating reprojection errors...")
+    for i in tqdm(range(len(pred_poses)), desc="Reprojection"):
+        # Extract rotation and translation vectors
+        pred_rvec = pred_poses[i, :3].reshape(3, 1)
+        pred_tvec = pred_poses[i, 3:].reshape(3, 1)
+        gt_rvec = gt_poses[i, :3].reshape(3, 1)
+        gt_tvec = gt_poses[i, 3:].reshape(3, 1)
+        
+        # Project 3D points using predicted pose
+        pred_points_2d, _ = cv2.projectPoints(
+            object_points,
+            pred_rvec,
+            pred_tvec,
+            camera_matrix,
+            dist_coeffs
+        )
+        
+        # Project 3D points using ground truth pose
+        gt_points_2d, _ = cv2.projectPoints(
+            object_points,
+            gt_rvec,
+            gt_tvec,
+            camera_matrix,
+            dist_coeffs
+        )
+        
+        # Calculate Euclidean distance (reprojection error)
+        error = np.linalg.norm(pred_points_2d - gt_points_2d, axis=2).mean()
+        errors.append(error)
+    
+    errors = np.array(errors)
+    
+    # Calculate statistics
+    statistics = {
+        'mean': float(np.mean(errors)),
+        'median': float(np.median(errors)),
+        'std': float(np.std(errors)),
+        'min': float(np.min(errors)),
+        'max': float(np.max(errors)),
+        'percentile_95': float(np.percentile(errors, 95)),
+        'percentile_99': float(np.percentile(errors, 99))
+    }
+    
+    print(f"\nReprojection Error Statistics (pixels):")
+    print(f"  Mean:   {statistics['mean']:.2f}")
+    print(f"  Median: {statistics['median']:.2f}")
+    print(f"  Std:    {statistics['std']:.2f}")
+    print(f"  Min:    {statistics['min']:.2f}")
+    print(f"  Max:    {statistics['max']:.2f}")
+    print(f"  95th percentile: {statistics['percentile_95']:.2f}")
+    print(f"  99th percentile: {statistics['percentile_99']:.2f}")
+    
+    return errors, statistics
+
+
+def calculate_pose_errors(pred_poses, gt_poses):
+    """
+    Calculate rotation and translation errors directly.
+    
+    Args:
+        pred_poses: Predicted poses [N, 6]
+        gt_poses: Ground truth poses [N, 6]
+        
+    Returns:
+        rotation_errors: Rotation errors (angle in degrees) [N]
+        translation_errors: Translation errors (Euclidean distance) [N]
+        statistics: Dictionary with error statistics
+    """
+    rotation_errors = []
+    translation_errors = []
+    
+    print("Calculating pose errors...")
+    for i in tqdm(range(len(pred_poses)), desc="Pose errors"):
+        # Rotation error (angle difference)
+        pred_rvec = pred_poses[i, :3]
+        gt_rvec = gt_poses[i, :3]
+        
+        # Convert to rotation matrices
+        pred_R, _ = cv2.Rodrigues(pred_rvec)
+        gt_R, _ = cv2.Rodrigues(gt_rvec)
+        
+        # Calculate rotation difference
+        R_diff = np.dot(pred_R, gt_R.T)
+        angle = np.arccos(np.clip((np.trace(R_diff) - 1) / 2, -1, 1))
+        rotation_errors.append(np.degrees(angle))
+        
+        # Translation error (Euclidean distance)
+        pred_tvec = pred_poses[i, 3:]
+        gt_tvec = gt_poses[i, 3:]
+        t_error = np.linalg.norm(pred_tvec - gt_tvec)
+        translation_errors.append(t_error)
+    
+    rotation_errors = np.array(rotation_errors)
+    translation_errors = np.array(translation_errors)
+    
+    statistics = {
+        'rotation': {
+            'mean': float(np.mean(rotation_errors)),
+            'median': float(np.median(rotation_errors)),
+            'std': float(np.std(rotation_errors)),
+            'max': float(np.max(rotation_errors))
+        },
+        'translation': {
+            'mean': float(np.mean(translation_errors)),
+            'median': float(np.median(translation_errors)),
+            'std': float(np.std(translation_errors)),
+            'max': float(np.max(translation_errors))
+        }
+    }
+    
+    print(f"\nRotation Error (degrees):")
+    print(f"  Mean:   {statistics['rotation']['mean']:.2f}")
+    print(f"  Median: {statistics['rotation']['median']:.2f}")
+    print(f"  Std:    {statistics['rotation']['std']:.2f}")
+    print(f"  Max:    {statistics['rotation']['max']:.2f}")
+    
+    print(f"\nTranslation Error:")
+    print(f"  Mean:   {statistics['translation']['mean']:.4f}")
+    print(f"  Median: {statistics['translation']['median']:.4f}")
+    print(f"  Std:    {statistics['translation']['std']:.4f}")
+    print(f"  Max:    {statistics['translation']['max']:.4f}")
+    
+    return rotation_errors, translation_errors, statistics
 
 
 def parse_args():
