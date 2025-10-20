@@ -39,18 +39,88 @@ Viz Arenaのようなプロフェッショナルなバーチャル広告生成�
 
 ```bash
 # 1. リポジトリクローン
-git clone <repository-url>
+git clone https://github.com/SITE4D/METABALL-VirtualAd.git
 cd METABALL-VirtualAd
 
-# 2. 依存関係インストール
-scripts\setup_windows.bat
+# 2. 依存関係インストール（vcpkg）
+vcpkg install
 
 # 3. ビルド
-scripts\build.bat
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=[vcpkg root]/scripts/buildsystems/vcpkg.cmake
+cmake --build build --config Release
 
-# 4. 実行
-build\Release\VirtualAd.exe
+# 4. AI推論デモ実行
+build\Release\demo_tracking_ai.exe [video_path] [model_path] [mode] [blend_alpha]
+
+# 例: PnPのみモードでデモ実行
+build\Release\demo_tracking_ai.exe data/samples/test_video.mp4 models/camera_pose_net.onnx PNP_ONLY
 ```
+
+## デモプログラム
+
+### AI Tracking Demo (`demo_tracking_ai`)
+
+AI-powered カメラポーズ推定のデモアプリケーション
+
+**機能:**
+- ビデオファイル再生
+- リアルタイムカメラポーズ推定（PnP + AI統合）
+- 3D座標軸の可視化
+- 3つの動作モード切り替え
+- パフォーマンス測定
+
+**使用方法:**
+
+```bash
+# 基本的な使い方
+demo_tracking_ai.exe [video_path] [model_path] [mode] [blend_alpha]
+
+# パラメータ:
+#   video_path   : 入力ビデオファイルパス（デフォルト: data/samples/test_video.mp4）
+#   model_path   : ONNXモデルファイルパス（デフォルト: models/camera_pose_net.onnx）
+#   mode         : PNP_ONLY | AI_ONLY | BLENDED（デフォルト: BLENDED）
+#   blend_alpha  : ブレンディング係数 0.0-1.0（デフォルト: 0.5）
+
+# 例1: PnPのみ
+demo_tracking_ai.exe sample.mp4 model.onnx PNP_ONLY
+
+# 例2: AIとPnPのブレンディング（75% AI、25% PnP）
+demo_tracking_ai.exe sample.mp4 model.onnx BLENDED 0.75
+```
+
+**キーボード操作:**
+- `1`: PNP_ONLY モードに切り替え
+- `2`: AI_ONLY モードに切り替え
+- `3`: BLENDED モードに切り替え
+- `Q` / `ESC`: 終了
+
+**出力:**
+- リアルタイム映像表示（3D軸、検出コーナー、統計情報）
+- コンソールに詳細な統計情報
+- 処理時間測定（目標: ≤10ms/frame）
+```
+
+## 開発進捗
+
+### Phase 1: C++コアシステム ✅
+- ビデオI/O（ファイル再生/キャプチャ）
+- フレームパイプライン
+- 特徴検出・マッチング（ORB/AKAZE）
+- PnPソルバー（OpenCV solvePnP）
+
+### Phase 2: AI学習パイプライン ✅
+- PyTorchモデル実装（CameraPoseNet）
+- 学習・評価スクリプト
+- ONNX エクスポート
+
+### Phase 3: C++統合とデモ ✅
+- ONNX Runtime C++ ラッパー実装
+- PnP + AI統合（CameraPoseRefiner）
+- デモアプリケーション（`demo_tracking_ai`）
+- 3つの動作モード（PNP_ONLY, AI_ONLY, BLENDED）
+
+**Phase 3 完了日**: 2025/10/20
+**最新コミット**: 37b9a63 "Phase 3 Step 3-3b: Add visualization and interactive controls to demo"
 
 ## ドキュメント
 
