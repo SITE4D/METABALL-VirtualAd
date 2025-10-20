@@ -252,6 +252,7 @@ int main(int argc, char** argv) {
     std::cout << "  Model: " << model_path << std::endl;
     std::cout << "  Mode: " << mode_str << std::endl;
     std::cout << "  Blend Alpha: " << blend_alpha << std::endl;
+    std::cout << "  Use Feature Tracking: " << (use_feature_tracking ? "true" : "false") << std::endl;
     std::cout << std::endl;
     
     // Initialize video source
@@ -267,6 +268,17 @@ int main(int argc, char** argv) {
     
     // Initialize camera intrinsics
     CameraIntrinsics intrinsics = CameraIntrinsics::createDefaultFullHD();
+    
+    // Initialize feature tracker (if enabled)
+    std::unique_ptr<FeatureTracker> feature_tracker;
+    if (use_feature_tracking) {
+        feature_tracker = std::make_unique<FeatureTracker>(
+            FeatureDetectorType::ORB,
+            intrinsics,
+            1000  // Max features
+        );
+        std::cout << "Feature tracker initialized (ORB, 1000 features)" << std::endl;
+    }
     
     // Initialize PnP solver
     auto pnp_solver = std::make_shared<PnPSolver>(
@@ -323,6 +335,7 @@ int main(int argc, char** argv) {
     int frame_count = 0;
     double total_time = 0.0;
     auto start_time = std::chrono::steady_clock::now();
+    bool tracker_initialized = false;
     
     while (video_source.isOpened()) {
         // Get frame
@@ -333,18 +346,36 @@ int main(int argc, char** argv) {
         
         frame_count++;
         
+        // Initialize feature tracker with first frame (if enabled and not yet initialized)
+        if (use_feature_tracking && feature_tracker && !tracker_initialized) {
+            if (feature_tracker->initialize(frame, object_points)) {
+                tracker_initialized = true;
+                std::cout << "Feature tracker initialized with first frame" << std::endl;
+            } else {
+                std::cerr << "WARNING: Failed to initialize feature tracker, disabling it" << std::endl;
+                feature_tracker.reset();
+                use_feature_tracking = false;
+            }
+        }
+        
         // Create display frame (clone for drawing)
         cv::Mat display_frame = frame.clone();
         
-        // Detect image points (simplified)
-        std::vector<cv::Point2f> image_points = detectImagePoints(frame);
-        
-        // Refine pose
+        // Track or detect
         auto process_start = std::chrono::high_resolution_clock::now();
         
         CameraPose pose;
         std::vector<uchar> inlier_mask;
-        bool success = refiner.refinePose(frame, object_points, image_points, pose, inlier_mask);
+        bool success = false;
+        
+        if (use_feature_tracking && feature_tracker && tracker_initialized) {
+            // Use feature tracking
+            success = feature_tracker->track(frame, pose);
+        } else {
+            // Use fixed corner detection + refinement
+            std::vector<cv::Point2f> image_points = detectImagePoints(frame);
+            success = refiner.refinePose(frame, object_points, image_points, pose, inlier_mask);
+        }
         
         auto process_end = std::chrono::high_resolution_clock::now();
         double processing_time = std::chrono::duration<double, std::milli>(process_end - process_start).count();
