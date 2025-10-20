@@ -40,14 +40,29 @@ message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
 # インクルードディレクトリ
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
-# サブディレクトリ（Phase 1以降で追加）
-# add_subdirectory(src/core)
+# コアライブラリ（Phase 1）
+add_library(Core STATIC
+    src/core/FramePipeline.cpp
+)
+
+target_include_directories(Core
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(Core
+    PUBLIC
+        ${OpenCV_LIBS}
+)
+
+# サブディレクトリ（Phase 2以降で追加）
 # add_subdirectory(src/tracking)
 # add_subdirectory(src/ai)
 # add_subdirectory(src/rendering)
 # add_subdirectory(src/gui)
 
-# メイン実行ファイル（Phase 0では簡易版）
+# メイン実行ファイル
 add_executable(VirtualAd
     src/main.cpp
 )
@@ -55,10 +70,10 @@ add_executable(VirtualAd
 # ライブラリリンク
 target_link_libraries(VirtualAd
     PRIVATE
+        Core
         ${OpenCV_LIBS}
 )
-# Phase 1以降で追加:
-#     Core
+# Phase 2以降で追加:
 #     Tracking
 #     AI
 #     Rendering
