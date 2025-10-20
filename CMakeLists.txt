@@ -60,6 +60,22 @@ target_link_libraries(Core
         ${OpenCV_LIBS}
 )
 
+# Toolsライブラリ（Phase 1.5）
+add_library(Tools STATIC
+    src/tools/AnnotationTool.cpp
+)
+
+target_include_directories(Tools
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(Tools
+    PUBLIC
+        ${OpenCV_LIBS}
+)
+
 # サブディレクトリ（Phase 2以降で追加）
 # add_subdirectory(src/tracking)
 # add_subdirectory(src/ai)
@@ -91,8 +107,20 @@ else()
     target_compile_options(VirtualAd PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# アノテーションツール実行ファイル（Phase 1.5）
+add_executable(AnnotationTool
+    src/tools/annotate_main.cpp
+)
+
+target_link_libraries(AnnotationTool
+    PRIVATE
+        Core
+        Tools
+        ${OpenCV_LIBS}
+)
+
 # インストールターゲット
-install(TARGETS VirtualAd
+install(TARGETS VirtualAd AnnotationTool
     RUNTIME DESTINATION bin
 )
 
