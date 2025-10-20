@@ -170,6 +170,44 @@ bool DepthCompositor::compositeSimple(const cv::Mat& image,
     }
 }
 
+// デプスベース合成を実行
+bool DepthCompositor::composite(const cv::Mat& image,
+                               const cv::Mat& segmentation_mask,
+                               const cv::Mat& depth_map,
+                               const cv::Mat& ad_texture,
+                               cv::Mat& output,
+                               float backnet_depth)
+{
+    // 入力検証
+    if (!validateInputs(image, segmentation_mask, depth_map, ad_texture)) {
+        return false;
+    }
+    
+    try {
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+        // 広告テクスチャをリサイズ
+        cv::Mat resized_ad;
+        resizeAdTexture(ad_texture, image.size(), resized_ad);
+        
+        // デプスベースのピクセル単位合成
+        compositePixelwise(image, segmentation_mask, depth_map, 
+                          resized_ad, output, backnet_depth);
+        
+        // 処理時間計測
+        auto end_time = std::chrono::high_resolution_clock::now();
+        processing_time_ = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+        
+        last_error_.clear();
+        return true;
+    }
+    catch (const std::exception& e) {
+        last_error_ = std::string("Depth-based compositing failed: ") + e.what();
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+}
+
 // デプスベースのピクセル単位合成
 void DepthCompositor::compositePixelwise(const cv::Mat& image,
                                         const cv::Mat& segmentation_mask,
