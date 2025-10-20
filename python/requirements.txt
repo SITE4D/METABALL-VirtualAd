@@ -1,0 +1,34 @@
+# PyTorch (CUDA 12.1対応)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# ONNX関連
+onnx>=1.14.0
+onnxruntime-gpu>=1.16.0
+
+# コンピュータビジョン
+opencv-python>=4.8.0
+pillow>=10.0.0
+
+# 数値計算
+numpy>=1.24.0
+scipy>=1.11.0
+
+# データ処理
+pandas>=2.0.0
+
+# 可視化
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# 学習支援
+tqdm>=4.65.0
+tensorboard>=2.13.0
+
+# Segment Anything Model (SAM)
+segment-anything>=1.0
+
+# その他
+scikit-learn>=1.3.0
+scikit-image>=0.21.0

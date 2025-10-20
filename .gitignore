@@ -1,0 +1,107 @@
+# Build artifacts
+build/
+bin/
+lib/
+out/
+*.exe
+*.dll
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.obj
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sln.docstates
+*.vcxproj.filters
+*.vcxproj.user
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# AI Models
+models/*.onnx
+models/*.engine
+models/*.trt
+models/*.pt
+models/*.pth
+
+# Data
+data/samples/*.png
+data/samples/*.jpg
+data/samples/*.json
+data/segmentation/
+data/depth/
+*.mp4
+*.mov
+*.avi
+
+# Logs
+logs/
+*.log
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Qt
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.qm
+
+# TensorRT
+*.cache
+
+# vcpkg
+vcpkg_installed/
+
+# Temporary files
+*.bak
+*.old
+temp/
+tmp/
+
+# Documentation build
+docs/_build/
+html/
+latex/
+
+# Assets (large files)
+assets/*.mp4
+assets/*.mov
+
+# Keep specific files
+!.gitkeep
+!assets/.gitkeep
+!models/.gitkeep
+!data/.gitkeep
