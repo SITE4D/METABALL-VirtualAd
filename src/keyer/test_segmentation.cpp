@@ -119,5 +119,45 @@ int main(int argc, char* argv[])
               << (100.0 * class_counts[3] / total_pixels) << "%)" << std::endl;
     std::cout << std::endl;
     
+    // カラーマスク生成
+    cv::Mat color_mask;
+    SegmentationInference::maskToColor(mask, color_mask);
+    
+    // オーバーレイ画像生成
+    cv::Mat overlay;
+    SegmentationInference::overlayMask(image, mask, overlay, 0.5f);
+    
+    // 結果保存
+    if (!output_path.empty()) {
+        std::cout << "Saving results..." << std::endl;
+        
+        // オーバーレイ画像保存
+        if (cv::imwrite(output_path, overlay)) {
+            std::cout << "  Saved overlay image: " << output_path << std::endl;
+        } else {
+            std::cerr << "  ERROR: Failed to save overlay image" << std::endl;
+        }
+        
+        // カラーマスク保存
+        std::string mask_path = output_path.substr(0, output_path.find_last_of('.')) + "_mask.jpg";
+        if (cv::imwrite(mask_path, color_mask)) {
+            std::cout << "  Saved color mask: " << mask_path << std::endl;
+        }
+        
+        std::cout << std::endl;
+    }
+    
+    // 結果表示
+    std::cout << "Displaying results (Press any key to close)..." << std::endl;
+    cv::imshow("Original Image", image);
+    cv::imshow("Color Mask", color_mask);
+    cv::imshow("Overlay", overlay);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+    
+    std::cout << "========================================" << std::endl;
+    std::cout << "Test completed successfully!" << std::endl;
+    std::cout << "========================================" << std::endl;
+    
     return 0;
 }
