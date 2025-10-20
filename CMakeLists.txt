@@ -119,6 +119,7 @@ target_link_libraries(Inference
 add_library(Keyer STATIC
     src/keyer/SegmentationInference.cpp
     src/keyer/DepthEstimator.cpp
+    src/keyer/DepthCompositor.cpp
 )
 
 target_include_directories(Keyer
