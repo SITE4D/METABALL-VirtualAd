@@ -170,6 +170,47 @@ bool DepthCompositor::compositeSimple(const cv::Mat& image,
     }
 }
 
+// デプスベースのピクセル単位合成
+void DepthCompositor::compositePixelwise(const cv::Mat& image,
+                                        const cv::Mat& segmentation_mask,
+                                        const cv::Mat& depth_map,
+                                        const cv::Mat& ad_texture,
+                                        cv::Mat& output,
+                                        float backnet_depth)
+{
+    // 出力画像作成
+    output = image.clone();
+    
+    // ピクセル単位で合成
+    for (int y = 0; y < image.rows; y++) {
+        for (int x = 0; x < image.cols; x++) {
+            uchar class_id = segmentation_mask.at<uchar>(y, x);
+            float pixel_depth = depth_map.at<float>(y, x);
+            
+            // クラスIDに応じた処理
+            if (class_id == static_cast<uchar>(SegmentationClass::PLAYER) ||
+                class_id == static_cast<uchar>(SegmentationClass::UMPIRE)) {
+                // 選手/審判: デプス比較
+                if (pixel_depth < backnet_depth - depth_threshold_) {
+                    // 選手が手前 → 元画像のまま
+                    // output.at<cv::Vec3b>(y, x) = image.at<cv::Vec3b>(y, x);  // 既にclone済み
+                } else {
+                    // 選手が奥 → 広告で置き換え
+                    output.at<cv::Vec3b>(y, x) = ad_texture.at<cv::Vec3b>(y, x);
+                }
+            }
+            else if (class_id == static_cast<uchar>(SegmentationClass::BACKNET)) {
+                // バックネット → 広告で置き換え
+                output.at<cv::Vec3b>(y, x) = ad_texture.at<cv::Vec3b>(y, x);
+            }
+            else {
+                // 背景 → 元画像のまま
+                // output.at<cv::Vec3b>(y, x) = image.at<cv::Vec3b>(y, x);  // 既にclone済み
+            }
+        }
+    }
+}
+
 // 広告テクスチャをリサイズ（静的メソッド）
 void DepthCompositor::resizeAdTexture(const cv::Mat& ad_texture,
                                      const cv::Size& target_size,
