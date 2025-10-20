@@ -92,6 +92,133 @@ void printStats(int frame_num, double fps, const CameraPose& pose,
               << " | " << poseToString(pose) << std::endl;
 }
 
+/**
+ * @brief Draw 3D coordinate axes on frame
+ * 
+ * @param frame Input/output frame
+ * @param pose Camera pose
+ * @param camera_matrix Camera intrinsic matrix
+ * @param dist_coeffs Distortion coefficients
+ */
+void drawAxes(cv::Mat& frame, const CameraPose& pose, 
+              const cv::Mat& camera_matrix, const cv::Mat& dist_coeffs) {
+    if (!pose.isValid()) {
+        return;
+    }
+    
+    // Define 3D axes points (origin + 3 axis endpoints)
+    std::vector<cv::Point3f> axes_points;
+    axes_points.push_back(cv::Point3f(0.0f, 0.0f, 0.0f));  // Origin
+    axes_points.push_back(cv::Point3f(0.3f, 0.0f, 0.0f));  // X-axis (red)
+    axes_points.push_back(cv::Point3f(0.0f, 0.3f, 0.0f));  // Y-axis (green)
+    axes_points.push_back(cv::Point3f(0.0f, 0.0f, 0.3f));  // Z-axis (blue)
+    
+    // Project to image
+    std::vector<cv::Point2f> image_points;
+    cv::projectPoints(axes_points, pose.rvec, pose.tvec, 
+                     camera_matrix, dist_coeffs, image_points);
+    
+    // Draw axes
+    cv::line(frame, image_points[0], image_points[1], cv::Scalar(0, 0, 255), 3);  // X: Red
+    cv::line(frame, image_points[0], image_points[2], cv::Scalar(0, 255, 0), 3);  // Y: Green
+    cv::line(frame, image_points[0], image_points[3], cv::Scalar(255, 0, 0), 3);  // Z: Blue
+    
+    // Draw origin point
+    cv::circle(frame, image_points[0], 5, cv::Scalar(255, 255, 255), -1);
+}
+
+/**
+ * @brief Draw detected corners on frame
+ */
+void drawCorners(cv::Mat& frame, const std::vector<cv::Point2f>& corners) {
+    for (size_t i = 0; i < corners.size(); i++) {
+        cv::circle(frame, corners[i], 8, cv::Scalar(0, 255, 255), -1);
+        cv::putText(frame, std::to_string(i), corners[i] + cv::Point2f(10, 10),
+                   cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 255), 2);
+    }
+    
+    // Draw outline
+    if (corners.size() >= 4) {
+        for (size_t i = 0; i < corners.size(); i++) {
+            cv::line(frame, corners[i], corners[(i + 1) % corners.size()], 
+                    cv::Scalar(0, 255, 255), 2);
+        }
+    }
+}
+
+/**
+ * @brief Draw statistics overlay on frame
+ */
+void drawStatsOverlay(cv::Mat& frame, int frame_num, double fps, 
+                     const std::string& mode, double processing_time,
+                     float blend_alpha) {
+    int y = 30;
+    int line_height = 30;
+    cv::Scalar color(0, 255, 0);
+    int font = cv::FONT_HERSHEY_SIMPLEX;
+    double font_scale = 0.7;
+    int thickness = 2;
+    
+    // Draw semi-transparent background
+    cv::rectangle(frame, cv::Point(10, 10), cv::Point(450, 150), 
+                 cv::Scalar(0, 0, 0), -1);
+    cv::rectangle(frame, cv::Point(10, 10), cv::Point(450, 150), 
+                 cv::Scalar(255, 255, 255), 2);
+    
+    // Draw text
+    std::ostringstream oss;
+    oss << "Frame: " << frame_num;
+    cv::putText(frame, oss.str(), cv::Point(20, y), font, font_scale, color, thickness);
+    y += line_height;
+    
+    oss.str("");
+    oss << "FPS: " << std::fixed << std::setprecision(1) << fps;
+    cv::putText(frame, oss.str(), cv::Point(20, y), font, font_scale, color, thickness);
+    y += line_height;
+    
+    oss.str("");
+    oss << "Mode: " << mode;
+    cv::putText(frame, oss.str(), cv::Point(20, y), font, font_scale, color, thickness);
+    y += line_height;
+    
+    oss.str("");
+    oss << "Alpha: " << std::fixed << std::setprecision(2) << blend_alpha;
+    cv::putText(frame, oss.str(), cv::Point(20, y), font, font_scale, color, thickness);
+    y += line_height;
+    
+    oss.str("");
+    oss << "Time: " << std::fixed << std::setprecision(2) << processing_time << " ms";
+    cv::putText(frame, oss.str(), cv::Point(20, y), font, font_scale, color, thickness);
+}
+
+/**
+ * @brief Draw help overlay
+ */
+void drawHelpOverlay(cv::Mat& frame) {
+    int y = frame.rows - 150;
+    int line_height = 25;
+    cv::Scalar color(255, 255, 0);
+    int font = cv::FONT_HERSHEY_SIMPLEX;
+    double font_scale = 0.6;
+    int thickness = 2;
+    
+    // Draw semi-transparent background
+    cv::rectangle(frame, cv::Point(10, y - 30), cv::Point(400, frame.rows - 10), 
+                 cv::Scalar(0, 0, 0), -1);
+    cv::rectangle(frame, cv::Point(10, y - 30), cv::Point(400, frame.rows - 10), 
+                 cv::Scalar(255, 255, 255), 2);
+    
+    cv::putText(frame, "Controls:", cv::Point(20, y), font, font_scale, color, thickness);
+    y += line_height;
+    cv::putText(frame, "1: PNP_ONLY", cv::Point(20, y), font, font_scale, cv::Scalar(200, 200, 200), thickness);
+    y += line_height;
+    cv::putText(frame, "2: AI_ONLY", cv::Point(20, y), font, font_scale, cv::Scalar(200, 200, 200), thickness);
+    y += line_height;
+    cv::putText(frame, "3: BLENDED", cv::Point(20, y), font, font_scale, cv::Scalar(200, 200, 200), thickness);
+    y += line_height;
+    cv::putText(frame, "Q/ESC: Quit", cv::Point(20, y), font, font_scale, cv::Scalar(200, 200, 200), thickness);
+}
+
 int main(int argc, char** argv) {
     std::cout << "=== METABALL Virtual Ad - AI Tracking Demo ===" << std::endl;
     std::cout << std::endl;
@@ -172,11 +299,20 @@ int main(int argc, char** argv) {
     
     std::cout << std::endl;
     std::cout << "Processing video..." << std::endl;
-    std::cout << "Press 'q' or ESC to quit" << std::endl;
+    std::cout << "Press '1/2/3' to switch modes, 'q' or ESC to quit" << std::endl;
     std::cout << std::endl;
     
     // Create reference 3D points
     std::vector<cv::Point3f> object_points = createReferencePlane();
+    
+    // Create display window
+    const std::string window_name = "METABALL Virtual Ad - AI Tracking Demo";
+    cv::namedWindow(window_name, cv::WINDOW_NORMAL);
+    cv::resizeWindow(window_name, 1280, 720);
+    
+    // Get camera matrix for visualization
+    cv::Mat camera_matrix = intrinsics.toCameraMatrix();
+    cv::Mat dist_coeffs = intrinsics.toDistortionCoeffs();
     
     // Processing loop
     int frame_count = 0;
@@ -191,6 +327,9 @@ int main(int argc, char** argv) {
         }
         
         frame_count++;
+        
+        // Create display frame (clone for drawing)
+        cv::Mat display_frame = frame.clone();
         
         // Detect image points (simplified)
         std::vector<cv::Point2f> image_points = detectImagePoints(frame);
@@ -211,20 +350,66 @@ int main(int argc, char** argv) {
         double elapsed = std::chrono::duration<double>(current_time - start_time).count();
         double fps = frame_count / elapsed;
         
-        // Print statistics
+        // Draw visualizations
         if (success) {
+            // Draw detected corners
+            drawCorners(display_frame, image_points);
+            
+            // Draw 3D coordinate axes
+            drawAxes(display_frame, pose, camera_matrix, dist_coeffs);
+            
+            // Print statistics to console
             printStats(frame_count, fps, pose, processing_time, mode_str);
         } else {
             std::cout << "Frame " << std::setw(4) << frame_count 
                       << " | FAILED: " << refiner.getLastError() << std::endl;
         }
         
-        // Check for user input (non-blocking)
+        // Draw overlay statistics
+        drawStatsOverlay(display_frame, frame_count, fps, mode_str, 
+                        processing_time, refiner.getBlendAlpha());
+        
+        // Draw help overlay
+        drawHelpOverlay(display_frame);
+        
+        // Display frame
+        cv::imshow(window_name, display_frame);
+        
+        // Check for user input
         int key = cv::waitKey(1);
-        if (key == 'q' || key == 27) {  // 'q' or ESC
+        if (key == 'q' || key == 'Q' || key == 27) {  // 'q' or ESC
             break;
+        } else if (key == '1') {
+            // Switch to PNP_ONLY
+            mode = CameraPoseRefiner::Mode::PNP_ONLY;
+            mode_str = "PNP_ONLY";
+            refiner.setMode(mode);
+            std::cout << "Switched to PNP_ONLY mode" << std::endl;
+        } else if (key == '2') {
+            // Switch to AI_ONLY
+            if (refiner.isModelLoaded()) {
+                mode = CameraPoseRefiner::Mode::AI_ONLY;
+                mode_str = "AI_ONLY";
+                refiner.setMode(mode);
+                std::cout << "Switched to AI_ONLY mode" << std::endl;
+            } else {
+                std::cout << "AI model not loaded, cannot switch to AI_ONLY" << std::endl;
+            }
+        } else if (key == '3') {
+            // Switch to BLENDED
+            if (refiner.isModelLoaded()) {
+                mode = CameraPoseRefiner::Mode::BLENDED;
+                mode_str = "BLENDED";
+                refiner.setMode(mode);
+                std::cout << "Switched to BLENDED mode" << std::endl;
+            } else {
+                std::cout << "AI model not loaded, cannot switch to BLENDED" << std::endl;
+            }
         }
     }
+    
+    // Cleanup
+    cv::destroyAllWindows();
     
     // Print summary
     std::cout << std::endl;
