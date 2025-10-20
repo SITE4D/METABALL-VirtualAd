@@ -37,28 +37,105 @@ Viz Arenaのようなプロフェッショナルなバーチャル広告生成�
 
 ## クイックスタート（Windows）
 
+### 方法1: Visual Studio Code CMake統合（推奨）
+
+1. **リポジトリクローン**
 ```bash
-# 1. リポジトリクローン
 git clone https://github.com/SITE4D/METABALL-VirtualAd.git
 cd METABALL-VirtualAd
-
-# 2. 依存関係インストール（vcpkg）
-vcpkg install
-
-# 3. ビルド
-cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=[vcpkg root]/scripts/buildsystems/vcpkg.cmake
-cmake --build build --config Release
-
-# 4. AI推論デモ実行
-build\Release\demo_tracking_ai.exe [video_path] [model_path] [mode] [blend_alpha]
-
-# 例: PnPのみモードでデモ実行
-build\Release\demo_tracking_ai.exe data/samples/test_video.mp4 models/camera_pose_net.onnx PNP_ONLY
 ```
 
-## デモプログラム
+2. **VSCode拡張機能インストール**
+   - CMake Tools
+   - C/C++（Microsoft）
 
-### AI Tracking Demo (`demo_tracking_ai`)
+3. **VSCodeでプロジェクトを開く**
+```bash
+code .
+```
+
+4. **CMake設定**
+   - VSCodeコマンドパレット（Ctrl+Shift+P）
+   - "CMake: Configure" を実行
+   - Kitを選択（Visual Studio Community 2022 Release - amd64）
+
+5. **ビルド**
+   - VSCodeコマンドパレット（Ctrl+Shift+P）
+   - "CMake: Build" を実行
+   - または下部ステータスバーの「Build」ボタンをクリック
+
+6. **実行**
+   - VSCodeコマンドパレット（Ctrl+Shift+P）
+   - "CMake: Select a target to run" を選択
+   - 実行したいターゲット（DemoTrackingAI等）を選択
+   - "CMake: Run Without Debugging" を実行
+
+### 方法2: コマンドライン
+
+1. **リポジトリクローン**
+```bash
+git clone https://github.com/SITE4D/METABALL-VirtualAd.git
+cd METABALL-VirtualAd
+```
+
+2. **Developer Command Prompt for VS 2022を開く**
+
+3. **CMake設定**
+```bash
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+```
+
+4. **ビルド**
+```bash
+cmake --build build --config Release
+```
+
+5. **実行**
+```bash
+# トラッキングテスト
+build\bin\Release\TestFeatureTracking.exe data/samples/test_video.mp4
+
+# AIトラッキングデモ
+build\bin\Release\DemoTrackingAI.exe data/samples/test_video.mp4 models/camera_pose_net.onnx
+```
+
+## 実行可能プログラム
+
+### 1. VirtualAd
+メインアプリケーション（Phase 1）
+
+### 2. AnnotationTool
+データアノテーションツール（Phase 1.5）
+- 特徴: バックネットコーナーの手動指定
+- 出力: JSON形式のアノテーションデータ
+
+### 3. TestFeatureDetection
+特徴点検出テストプログラム（Phase 2）
+- 特徴: ORB/AKAZE特徴点検出の動作確認
+
+### 4. TestFeatureMatching
+特徴マッチングテストプログラム（Phase 2）
+- 特徴: フレーム間マッチング・RANSAC検証
+
+### 5. TestFeatureTracking
+トラッキングテストプログラム（Phase 2.5）
+- 特徴: FeatureTrackerの統合テスト
+- 出力: トラッキング成功率、パフォーマンス測定
+
+### 6. TestONNXInference
+ONNX推論テストプログラム（Phase 3）
+- 特徴: ONNX Runtime動作確認、推論時間測定
+
+### 7. TestPoseRefinement
+ポーズ補正テストプログラム（Phase 3）
+- 特徴: PnP + AI補正の精度比較
+
+### 8. DemoTrackingAI
+AIトラッキングデモ（Phase 3）
+
+## デモプログラム詳細
+
+### AI Tracking Demo (`DemoTrackingAI`)
 
 AI-powered カメラポーズ推定のデモアプリケーション
 
