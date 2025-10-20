@@ -112,9 +112,10 @@
 - [x] サンプル映像での動作確認
 
 ### 映像出力実装
-- [ ] HDMI出力クラス実装
-- [ ] ファイル録画機能（H.264）
-- [ ] パススルー表示
+- [x] WindowPreviewOutput実装（OpenCV imshow）
+- [x] FileWriterOutput実装（H.264録画）
+- [x] FramePipeline統合テスト
+- [ ] HDMI出力クラス実装（Phase 1 Step 4以降）
 
 ### GUIプロトタイプ
 - [ ] Qt6 メインウィンドウ作成

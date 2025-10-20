@@ -44,6 +44,8 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 add_library(Core STATIC
     src/core/FramePipeline.cpp
     src/core/FilePlaybackSource.cpp
+    src/core/WindowPreviewOutput.cpp
+    src/core/FileWriterOutput.cpp
 )
 
 target_include_directories(Core
