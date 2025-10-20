@@ -247,19 +247,329 @@ struct FrameData {
 
 ---
 
-## 4. 次のセクション予定
+## 4. 統合パイプライン設計
 
-### Part 2（次回実装）
-- 統合パイプライン設計
-- マルチスレッドアーキテクチャ
-- データフロー詳細
+### 4.1 統合アーキテクチャ概要
 
-### Part 3（次回実装）
-- 実装計画
-- テスト戦略
-- ドキュメント計画
+#### 4.1.1 シングルスレッド版（ベースライン）
+
+**目的**: 機能統合の確認、デバッグ容易性
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    Main Thread                        │
+│                                                        │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐│
+│  │ Video   │→ │Tracking │→ │ Keyer   │→ │Rendering││
+│  │ Input   │  │         │  │         │  │         ││
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘│
+│       ↓            ↓            ↓            ↓       │
+│  FrameData    CameraPose   SegMask/     Rendered    │
+│                              DepthMap      Output    │
+└──────────────────────────────────────────────────────┘
+```
+
+**処理フロー**:
+1. ビデオ入力（1ms）
+2. 特徴トラッキング（5ms）
+3. カメラポーズ推定（5ms）
+4. セグメンテーション推論（3ms）
+5. デプス推定（2ms）
+6. 広告レンダリング（2ms）
+7. デプス合成（2ms）
+8. ビデオ出力（1ms）
+
+**合計**: 約21ms/frame → **47fps**（目標60fps未達）
+
+#### 4.1.2 マルチスレッド版（最適化）
+
+**目的**: 60fps達成、並列処理による性能向上
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                     Main Thread                               │
+│                   (Orchestrator)                              │
+│                                                                │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
+│  │ Frame    │→  │ Frame    │→  │ Frame    │→  │ Video    │ │
+│  │ Producer │   │ Queue    │   │ Consumer │   │ Output   │ │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────┘ │
+│       ↓              ↓              ↓              ↑          │
+└──────┼──────────────┼──────────────┼──────────────┼──────────┘
+       │              │              │              │
+┌──────┼──────────────┼──────────────┼──────────────┼──────────┐
+│      ↓              ↓              ↓              │           │
+│  ┌────────┐    ┌────────┐    ┌────────┐    ┌────────┐      │
+│  │Tracking│    │ Keyer  │    │Render/ │    │ Output │      │
+│  │ Thread │    │ Thread │    │Composite│   │ Thread │      │
+│  │        │    │        │    │ Thread  │   │        │      │
+│  └────────┘    └────────┘    └────────┘    └────────┘      │
+│      │              │              │              │           │
+│      └──────────────┴──────────────┴──────────────┘          │
+│                   Thread Pool                                 │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**スレッド構成**:
+
+1. **Main Thread（Orchestrator）**
+   - フレーム読み込み
+   - スレッド間同期
+   - 結果収集
+
+2. **Tracking Thread**
+   - 特徴トラッキング（5ms）
+   - カメラポーズ推定（5ms）
+   - 合計: 10ms
+
+3. **Keyer Thread**
+   - セグメンテーション推論（3ms）
+   - デプス推定（2ms）
+   - 合計: 5ms
+
+4. **Render/Composite Thread**
+   - 広告レンダリング（2ms）
+   - デプス合成（2ms）
+   - 合計: 4ms
+
+**並列実行時の理論処理時間**: max(10ms, 5ms, 4ms) = **10ms/frame** → **100fps**（目標達成）
+
+### 4.2 データ構造設計
+
+#### 4.2.1 FrameData構造体
+
+```cpp
+namespace VirtualAd {
+namespace Integration {
+
+/**
+ * @brief フレーム処理に必要なすべてのデータを保持
+ */
+struct FrameData {
+    // 基本情報
+    int64_t frame_id;                  // フレームID
+    double timestamp;                   // タイムスタンプ（秒）
+    
+    // 画像データ
+    cv::Mat image;                      // 入力画像（BGR、1920x1080）
+    
+    // トラッキング結果
+    bool tracking_success;              // トラッキング成功フラグ
+    cv::Mat rvec;                       // 回転ベクトル（3x1）
+    cv::Mat tvec;                       // 並進ベクトル（3x1）
+    std::vector<cv::Point2f> corners;   // 検出コーナー（4点）
+    int inlier_count;                   // インライア数
+    
+    // キーヤー結果
+    cv::Mat segmentation_mask;          // セグメンテーションマスク（CV_8UC1）
+    cv::Mat depth_map;                  // デプスマップ（CV_32FC1、正規化済み）
+    
+    // レンダリング結果
+    cv::Mat rendered_ad;                // レンダリング済み広告（BGR）
+    cv::Mat final_output;               // 最終出力（BGR、1920x1080）
+    
+    // パフォーマンス統計
+    double tracking_time_ms;            // トラッキング処理時間
+    double keyer_time_ms;               // キーヤー処理時間
+    double rendering_time_ms;           // レンダリング処理時間
+    double total_time_ms;               // 総処理時間
+    
+    /**
+     * @brief コンストラクタ
+     */
+    FrameData() 
+        : frame_id(0)
+        , timestamp(0.0)
+        , tracking_success(false)
+        , inlier_count(0)
+        , tracking_time_ms(0.0)
+        , keyer_time_ms(0.0)
+        , rendering_time_ms(0.0)
+        , total_time_ms(0.0)
+    {}
+};
+
+} // namespace Integration
+} // namespace VirtualAd
+```
+
+#### 4.2.2 スレッドセーフキュー
+
+```cpp
+/**
+ * @brief スレッドセーフなフレームキュー
+ */
+template<typename T>
+class ThreadSafeQueue {
+public:
+    ThreadSafeQueue(size_t max_size = 10) : max_size_(max_size) {}
+    
+    /**
+     * @brief キューに要素を追加（タイムアウトあり）
+     * @param value 追加する要素
+     * @param timeout_ms タイムアウト時間（ms）
+     * @return 成功時true、タイムアウト時false
+     */
+    bool push(const T& value, int timeout_ms = 1000) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!cond_not_full_.wait_for(lock, 
+                std::chrono::milliseconds(timeout_ms),
+                [this]{ return queue_.size() < max_size_; })) {
+            return false;  // タイムアウト
+        }
+        queue_.push(value);
+        cond_not_empty_.notify_one();
+        return true;
+    }
+    
+    /**
+     * @brief キューから要素を取得（タイムアウトあり）
+     * @param value 取得した要素の格納先
+     * @param timeout_ms タイムアウト時間（ms）
+     * @return 成功時true、タイムアウト時false
+     */
+    bool pop(T& value, int timeout_ms = 1000) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!cond_not_empty_.wait_for(lock,
+                std::chrono::milliseconds(timeout_ms),
+                [this]{ return !queue_.empty(); })) {
+            return false;  // タイムアウト
+        }
+        value = queue_.front();
+        queue_.pop();
+        cond_not_full_.notify_one();
+        return true;
+    }
+    
+    size_t size() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return queue_.size();
+    }
+    
+private:
+    std::queue<T> queue_;
+    size_t max_size_;
+    mutable std::mutex mutex_;
+    std::condition_variable cond_not_full_;
+    std::condition_variable cond_not_empty_;
+};
+```
+
+### 4.3 統合パイプラインクラス設計
+
+#### 4.3.1 IntegratedPipelineクラス
+
+```cpp
+namespace VirtualAd {
+namespace Integration {
+
+/**
+ * @brief 統合パイプラインクラス
+ * 
+ * すべてのコンポーネント（Tracking, Keyer, Rendering）を統合し、
+ * マルチスレッド処理を実現します。
+ */
+class IntegratedPipeline {
+public:
+    /**
+     * @brief 動作モード
+     */
+    enum class Mode {
+        SINGLE_THREAD,  // シングルスレッド（デバッグ用）
+        MULTI_THREAD    // マルチスレッド（本番用）
+    };
+    
+    /**
+     * @brief コンストラクタ
+     */
+    IntegratedPipeline();
+    
+    /**
+     * @brief デストラクタ
+     */
+    ~IntegratedPipeline();
+    
+    /**
+     * @brief パイプライン初期化
+     * @param config 設定パラメータ
+     * @return 成功時true
+     */
+    bool initialize(const PipelineConfig& config);
+    
+    /**
+     * @brief パイプライン開始
+     * @return 成功時true
+     */
+    bool start();
+    
+    /**
+     * @brief パイプライン停止
+     */
+    void stop();
+    
+    /**
+     * @brief 1フレーム処理
+     * @param frame 入力フレーム
+     * @param output 出力フレーム
+     * @return 成功時true
+     */
+    bool processFrame(const cv::Mat& frame, cv::Mat& output);
+    
+    /**
+     * @brief 統計情報取得
+     */
+    PipelineStatistics getStatistics() const;
+    
+private:
+    // コンポーネント
+    std::unique_ptr<Tracking::FeatureTracker> tracker_;
+    std::unique_ptr<Inference::CameraPoseRefiner> pose_refiner_;
+    std::unique_ptr<Keyer::SegmentationInference> segmentation_;
+    std::unique_ptr<Keyer::DepthEstimator> depth_estimator_;
+    std::unique_ptr<Keyer::DepthCompositor> compositor_;
+    std::unique_ptr<Rendering::AdRenderer> renderer_;
+    
+    // スレッド管理
+    Mode mode_;
+    std::atomic<bool> running_;
+    std::thread tracking_thread_;
+    std::thread keyer_thread_;
+    std::thread render_thread_;
+    
+    // キュー
+    ThreadSafeQueue<std::shared_ptr<FrameData>> input_queue_;
+    ThreadSafeQueue<std::shared_ptr<FrameData>> tracking_queue_;
+    ThreadSafeQueue<std::shared_ptr<FrameData>> keyer_queue_;
+    ThreadSafeQueue<std::shared_ptr<FrameData>> render_queue_;
+    ThreadSafeQueue<std::shared_ptr<FrameData>> output_queue_;
+    
+    // 統計情報
+    mutable std::mutex stats_mutex_;
+    PipelineStatistics statistics_;
+    
+    // スレッド関数
+    void trackingThreadFunc();
+    void keyerThreadFunc();
+    void renderThreadFunc();
+    
+    // シングルスレッド処理
+    bool processFrameSingleThread(std::shared_ptr<FrameData> frame_data);
+};
+
+} // namespace Integration
+} // namespace VirtualAd
+```
 
 ---
 
-**現在のドキュメント進捗**: Part 1/3完了
-**次のステップ**: Part 2実装（統合パイプライン設計）
+## 5. 次のセクション予定
+
+### Part 3（次回実装）
+- 実装計画（ステップバイステップ）
+- テスト戦略
+- パフォーマンス測定計画
+
+---
+
+**現在のドキュメント進捗**: Part 2/3完了
+**次のステップ**: Part 3実装（実装計画・テスト戦略）
