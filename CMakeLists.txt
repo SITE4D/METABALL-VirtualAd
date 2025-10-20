@@ -46,6 +46,7 @@ add_library(Core STATIC
     src/core/FilePlaybackSource.cpp
     src/core/WindowPreviewOutput.cpp
     src/core/FileWriterOutput.cpp
+    src/core/DirectShowCaptureSource.cpp
 )
 
 target_include_directories(Core
