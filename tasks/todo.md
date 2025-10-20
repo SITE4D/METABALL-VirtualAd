@@ -10,53 +10,80 @@
 
 ## Phase 0: 環境構築 (1-2日)
 
-### Windows開発環境セットアップ
-- [ ] Visual Studio 2022インストール
-  - [ ] C++デスクトップ開発ワークロード
-  - [ ] CMake統合ツール
-  - [ ] Git連携設定
-- [ ] CUDA Toolkit 12.xインストール
-  - [ ] cuDNN 8.x追加
-  - [ ] 環境変数設定確認
-- [ ] TensorRT 8.6+セットアップ
-  - [ ] ライブラリパス設定
-  - [ ] サンプル実行確認
-- [ ] vcpkgセットアップ
-  - [ ] リポジトリクローン
-  - [ ] Visual Studio統合
-- [ ] CMake 3.20+インストール確認
-- [ ] Python 3.10+環境構築
-  - [ ] venv作成
-  - [ ] requirements.txt作成
-  - [ ] PyTorch + CUDA版インストール
+**方針**: タイムアウトを防ぐため、各ステップを小さく分割し、一つずつ確実に進める
 
-### C++ライブラリインストール
-- [ ] OpenCV 4.8+ (vcpkg)
-  - [ ] `vcpkg install opencv4[contrib,cuda]:x64-windows`
-  - [ ] ビルド確認
-- [ ] Qt 6.5+ (vcpkg)
-  - [ ] `vcpkg install qt6:x64-windows`
-- [ ] ONNX Runtime GPU (vcpkg)
-  - [ ] `vcpkg install onnxruntime-gpu:x64-windows`
-- [ ] FFmpeg (vcpkg)
-  - [ ] `vcpkg install ffmpeg:x64-windows`
+### Step 1: 開発環境の確認
+- [ ] Visual Studio 2022のインストール確認
+  - [ ] バージョン確認コマンド実行
+  - [ ] C++デスクトップ開発ワークロード確認
+  - [ ] CMake統合ツール確認
+- [ ] CUDA Toolkitのバージョン確認
+  - [ ] `nvcc --version`実行
+  - [ ] 環境変数CUDA_PATH確認
+- [ ] CMakeのバージョン確認
+  - [ ] `cmake --version`実行（3.20+必要）
+- [ ] Git確認
+  - [ ] `git --version`実行
 
-### プロジェクト構造作成
-- [ ] ディレクトリ構造作成
-  - [ ] src/, docs/, python/, models/, data/, assets/, scripts/
-- [ ] CMakeLists.txt作成
-  - [ ] ルートCMakeLists.txt
-  - [ ] サブディレクトリ用CMakeLists.txt
-- [ ] .gitignore作成
-- [ ] Hello World的なアプリケーション作成
-  - [ ] main.cpp
-  - [ ] ビルド確認
-  - [ ] 実行確認
+### Step 2: CMakeプロジェクトのセットアップ（最小構成）
+- [ ] ディレクトリ構造の整備
+  - [ ] src/core/ディレクトリ作成
+  - [ ] src/gui/ディレクトリ作成
+  - [ ] tests/ディレクトリ作成
+  - [ ] scripts/ディレクトリ作成
+- [ ] 最小限のルートCMakeLists.txt作成
+  - [ ] CMake最小バージョン指定
+  - [ ] プロジェクト名設定
+  - [ ] C++20標準設定
+  - [ ] 基本的なビルド設定
+- [ ] .gitignore更新
+  - [ ] build/ディレクトリ追加
+  - [ ] Visual Studio関連ファイル追加
 
-### 完了基準
-- [ ] すべてのツールがインストール済み
-- [ ] サンプルプログラムがビルド・実行可能
-- [ ] GitHubリポジトリにプッシュ完了
+### Step 3: Hello Worldアプリケーション
+- [ ] 最小限のmain.cpp作成
+  - [ ] "Hello, METABALL Virtual Ad!"出力
+  - [ ] 正常終了コード
+- [ ] CMakeLists.txtに実行可能ファイル追加
+  - [ ] add_executable設定
+- [ ] ビルド確認
+  - [ ] `cmake -B build`実行
+  - [ ] `cmake --build build`実行
+- [ ] 実行確認
+  - [ ] 生成された.exeファイル実行
+  - [ ] 出力確認
+
+### Step 4: vcpkgのセットアップ
+- [ ] vcpkgインストール確認
+  - [ ] vcpkgディレクトリ確認
+  - [ ] `vcpkg version`実行
+- [ ] Visual Studio統合確認
+  - [ ] `vcpkg integrate install`実行済み確認
+- [ ] CMakeLists.txtにvcpkg統合
+  - [ ] CMAKE_TOOLCHAIN_FILE設定追加
+  - [ ] vcpkg.jsonマニフェストファイル作成（後のステップ用）
+
+### Step 5: OpenCVの基本インストールとテスト
+- [ ] OpenCVインストール（基本版のみ）
+  - [ ] `vcpkg install opencv4:x64-windows`実行
+  - [ ] インストール完了確認（15-30分程度）
+- [ ] CMakeLists.txtにOpenCV追加
+  - [ ] find_package(OpenCV REQUIRED)
+  - [ ] target_link_libraries設定
+- [ ] 画像読み込みテストプログラム作成
+  - [ ] main.cppを更新
+  - [ ] 簡単な画像読み込みコード追加
+  - [ ] テスト画像準備（assets/test.jpg）
+- [ ] ビルド・実行確認
+  - [ ] リビルド実行
+  - [ ] 画像読み込み動作確認
+
+### Phase 0完了基準
+- [ ] Hello Worldアプリケーションが正常動作
+- [ ] OpenCVを使った画像読み込みが成功
+- [ ] GitHubリポジトリにコミット・プッシュ完了
+
+**注意**: CUDA版OpenCV、Qt、TensorRTなどの大規模ライブラリは、Phase 1以降で必要になった時点でインストールする
 
 ---
 
@@ -361,9 +388,9 @@
 
 ## メモ
 
-- サンプル映像パス: `/Users/shojikumamoto/Documents/_Assets/VirtualAd/Fighters_2025-10-08_13-47-52.mp4`
-- 広告サンプル: `/Users/shojikumamoto/Documents/_Assets/VirtualAd/AD_FVILLAGE.png`
-- Viz Arena仕様書: `/Users/shojikumamoto/Documents/_Assets/VirtualAd/VizArena.pdf`
+- サンプル映像パス: `C:\Users\SITE4D\Documents\_Assets\VirtualAd\2025-10-08_13-47-52.mp4`
+- 広告サンプル: `C:\Users\SITE4D\Documents\_Assets\VirtualAd\AD_FVILLAGE.png`
+- Viz Arena仕様書: `C:\Users\SITE4D\Documents\_Assets\VirtualAd\VizArena.pdf`
 
 ---
 

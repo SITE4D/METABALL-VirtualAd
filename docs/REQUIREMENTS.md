@@ -410,8 +410,8 @@
 
 ## 参考資料
 
-- [Viz Arena仕様書](/Users/shojikumamoto/Documents/_Assets/VirtualAd/VizArena.pdf)
-- [サンプル映像](/Users/shojikumamoto/Documents/_Assets/VirtualAd/Fighters_2025-10-08_13-47-52.mp4)
-- [広告画像サンプル](/Users/shojikumamoto/Documents/_Assets/VirtualAd/AD_FVILLAGE.png)
+- [Viz Arena仕様書](C:\Users\SITE4D\Documents\_Assets\VirtualAd\VizArena.pdf)
+- [サンプル映像](C:\Users\SITE4D\Documents\_Assets\VirtualAd\2025-10-08_13-47-52.mp4)
+- [広告画像サンプル](C:\Users\SITE4D\Documents\_Assets\VirtualAd\AD_FVILLAGE.png)
 
 詳細な実装計画は [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) を参照してください。

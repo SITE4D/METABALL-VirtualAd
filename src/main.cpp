@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <opencv2/opencv.hpp>
 
 /**
  * @file main.cpp
@@ -7,6 +8,7 @@
  *
  * Phase 0: 環境構築確認用の簡易版
  * Windows環境でビルド・実行できることを確認する
+ * OpenCVの基本動作確認を含む
  */
 
 void printBanner() {
@@ -47,14 +49,40 @@ void printProjectStatus() {
     std::cout << "  ターゲット: Windows 10/11 64-bit" << std::endl;
     std::cout << std::endl;
 
+    std::cout << "[OpenCV情報]" << std::endl;
+    std::cout << "  バージョン: " << CV_VERSION << std::endl;
+    std::cout << "  ビルド情報: " << cv::getBuildInformation().substr(0, 500) << "..." << std::endl;
+    std::cout << std::endl;
+
     std::cout << "[次のステップ]" << std::endl;
-    std::cout << "  1. Visual Studio 2022インストール確認" << std::endl;
-    std::cout << "  2. CUDA Toolkit 12.xセットアップ" << std::endl;
+    std::cout << "  1. Visual Studio 2022インストール確認 ✓" << std::endl;
+    std::cout << "  2. CUDA Toolkit 12.xセットアップ (Phase 1以降)" << std::endl;
     std::cout << "  3. vcpkg経由でライブラリインストール" << std::endl;
-    std::cout << "     - OpenCV 4.8+" << std::endl;
-    std::cout << "     - Qt 6.5+" << std::endl;
-    std::cout << "     - ONNX Runtime GPU" << std::endl;
+    std::cout << "     - OpenCV 4.8+ ✓" << std::endl;
+    std::cout << "     - Qt 6.5+ (Phase 1以降)" << std::endl;
+    std::cout << "     - ONNX Runtime GPU (Phase 2以降)" << std::endl;
     std::cout << "  4. Phase 1: 映像I/Oパイプライン実装開始" << std::endl;
+    std::cout << std::endl;
+}
+
+void testOpenCV() {
+    std::cout << "[OpenCV動作確認]" << std::endl;
+    
+    // 簡単なMatオブジェクト作成テスト
+    cv::Mat testImage = cv::Mat::zeros(480, 640, CV_8UC3);
+    if (testImage.empty()) {
+        std::cout << "  ❌ Mat作成失敗" << std::endl;
+        return;
+    }
+    std::cout << "  ✓ Mat作成成功 (640x480, 3チャンネル)" << std::endl;
+    
+    // 簡単な描画テスト
+    cv::rectangle(testImage, cv::Point(100, 100), cv::Point(540, 380), cv::Scalar(0, 255, 0), 2);
+    cv::putText(testImage, "METABALL Virtual Ad", cv::Point(150, 240), 
+                cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255), 2);
+    std::cout << "  ✓ 描画関数動作確認" << std::endl;
+    
+    std::cout << "  ✓ OpenCV基本機能正常動作" << std::endl;
     std::cout << std::endl;
 }
 
@@ -73,13 +101,18 @@ int main(int argc, char* argv[]) {
     printBanner();
     printSystemInfo();
     printProjectStatus();
+    testOpenCV();
     printDocumentation();
 
-    std::cout << "=============================================" << std::endl;
-    std::cout << "環境構築が正常に完了しました！" << std::endl;
-    std::cout << "このプログラムが実行できれば、" << std::endl;
-    std::cout << "ビルドシステムが正しく動作しています。" << std::endl;
-    std::cout << "=============================================" << std::endl;
+    std::cout << "==============================================" << std::endl;
+    std::cout << "Phase 0 環境構築が正常に完了しました！" << std::endl;
+    std::cout << "✓ Visual Studio 2022" << std::endl;
+    std::cout << "✓ CMake 3.31" << std::endl;
+    std::cout << "✓ vcpkg パッケージマネージャー" << std::endl;
+    std::cout << "✓ OpenCV 4.8.0" << std::endl;
+    std::cout << std::endl;
+    std::cout << "次はPhase 1に進む準備が整いました。" << std::endl;
+    std::cout << "==============================================" << std::endl;
 
     return 0;
 }

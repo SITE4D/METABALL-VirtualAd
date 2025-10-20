@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "metaball-virtualad",
+  "version": "1.0.0",
+  "description": "METABALL Virtual Ad - Real-time virtual advertisement insertion system",
+  "homepage": "https://github.com/SITE4D/METABALL-VirtualAd",
+  "license": "MIT",
+  "dependencies": [
+    {
+      "name": "opencv4",
+      "version>=": "4.8.0",
+      "features": []
+    }
+  ],
+  "builtin-baseline": "a42af01b72c28a8e1d7b48107b33e4f286a55ef6"
+}

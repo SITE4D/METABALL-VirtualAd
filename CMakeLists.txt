@@ -21,10 +21,21 @@ if(DEFINED ENV{VCPKG_ROOT})
     message(STATUS "vcpkg root: $ENV{VCPKG_ROOT}")
 endif()
 
-# パッケージの検索（Phase 0完了後にコメント解除）
-# find_package(OpenCV 4.8 REQUIRED)
-# find_package(Qt6 COMPONENTS Widgets REQUIRED)
-# find_package(ONNX REQUIRED)
+# vcpkgマニフェストモード用の設定
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed")
+    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
+    message(STATUS "Using vcpkg installed packages from: ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
+endif()
+
+# パッケージの検索
+
+find_package(OpenCV 4.8 REQUIRED)
+# find_package(Qt6 COMPONENTS Widgets REQUIRED)  # Phase 1以降で有効化
+# find_package(ONNX REQUIRED)  # Phase 2以降で有効化
+
+message(STATUS "OpenCV version: ${OpenCV_VERSION}")
+message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
+message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
 
 # インクルードディレクトリ
 include_directories(${CMAKE_SOURCE_DIR}/src)
@@ -41,21 +52,22 @@ add_executable(VirtualAd
     src/main.cpp
 )
 
-# ライブラリリンク（Phase 1以降で追加）
-# target_link_libraries(VirtualAd
-#     PRIVATE
-#         Core
-#         Tracking
-#         AI
-#         Rendering
-#         GUI
-#         ${OpenCV_LIBS}
-#         Qt6::Widgets
-# )
+# ライブラリリンク
+target_link_libraries(VirtualAd
+    PRIVATE
+        ${OpenCV_LIBS}
+)
+# Phase 1以降で追加:
+#     Core
+#     Tracking
+#     AI
+#     Rendering
+#     GUI
+#     Qt6::Widgets
 
 # コンパイラ警告
 if(MSVC)
-    target_compile_options(VirtualAd PRIVATE /W4)
+    target_compile_options(VirtualAd PRIVATE /W4 /utf-8)
 else()
     target_compile_options(VirtualAd PRIVATE -Wall -Wextra -Wpedantic)
 endif()
