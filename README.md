@@ -133,6 +133,16 @@ ONNX推論テストプログラム（Phase 3）
 ### 8. DemoTrackingAI
 AIトラッキングデモ（Phase 3）
 
+### 9. TestSegmentation
+セグメンテーションテストプログラム（Phase 4）
+- 特徴: DeepLabV3+ ONNX推論動作確認
+- 出力: セグメンテーションマスク、推論時間測定
+
+### 10. TestDepthCompositor
+デプス合成テストプログラム（Phase 4）
+- 特徴: シンプル合成とデプスベース合成のテスト
+- 出力: 合成結果の可視化、パフォーマンス測定
+
 ## デモプログラム詳細
 
 ### AI Tracking Demo (`DemoTrackingAI`)
@@ -202,9 +212,22 @@ demo_tracking_ai.exe sample.mp4 model.onnx BLENDED 0.75
 - デモアプリケーション（`demo_tracking_ai`）
 - 3つの動作モード（PNP_ONLY, AI_ONLY, BLENDED）
 
+### Phase 4: AIキーヤー実装 ✅
+- セグメンテーションモデル実装（DeepLabV3+ MobileNetV3）
+  - Python学習パイプライン（train_segmentation.py）
+  - SAMアノテーションツール（sam_annotation.py）
+  - C++ ONNX推論（SegmentationInference）
+- デプス推定実装（MiDaS Small）
+  - C++ ONNX推論（DepthEstimator）
+- デプスベース合成実装
+  - シンプル合成とデプスベース合成（DepthCompositor）
+  - セグメンテーションマスク + デプスマップによる自然な合成
+  - 選手がバーチャル広告の前に表示される機能
+
 **Phase 2.5 完了日**: 2025/10/20
 **Phase 3 完了日**: 2025/10/20
-**最新コミット**: 9d0128a "Prepare demo_tracking_ai for FeatureTracker integration"
+**Phase 4 完了日**: 2025/10/20
+**最新コミット**: 86adc20 "Update CMakeLists.txt - Add TestDepthCompositor build target (Phase 4)"
 
 ## ドキュメント
 
