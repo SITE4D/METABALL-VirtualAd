@@ -227,9 +227,106 @@ void AdRenderer::computePerspectiveTransform(
     transform_matrix = cv::getPerspectiveTransform(src_points, dst_points);
 }
 
-// 次のパートで実装予定:
-// - applyTexture()
-// - render()
+// テクスチャ適用
+void AdRenderer::applyTexture(const cv::Mat& image,
+                             const cv::Mat& transform_matrix,
+                             const cv::Mat& ad_texture,
+                             cv::Mat& output)
+{
+    // 透視変換でテクスチャをワープ
+    cv::Mat warped_ad;
+    cv::warpPerspective(ad_texture, warped_ad, transform_matrix,
+                       image.size(), cv::INTER_LINEAR);
+    
+    // ブレンディングモードに応じて合成
+    switch (blend_mode_) {
+        case BlendMode::REPLACE:
+            // 完全置き換え
+            output = image.clone();
+            // マスク作成（ワープ後の広告領域）
+            {
+                cv::Mat mask;
+                cv::cvtColor(warped_ad, mask, cv::COLOR_BGR2GRAY);
+                cv::threshold(mask, mask, 1, 255, cv::THRESH_BINARY);
+                warped_ad.copyTo(output, mask);
+            }
+            break;
+        
+        case BlendMode::ALPHA_BLEND:
+            // アルファブレンディング
+            cv::addWeighted(image, 1.0 - alpha_, warped_ad, alpha_, 0.0, output);
+            break;
+        
+        case BlendMode::ADDITIVE:
+            // 加算合成
+            {
+                cv::Mat mask;
+                cv::cvtColor(warped_ad, mask, cv::COLOR_BGR2GRAY);
+                cv::threshold(mask, mask, 1, 255, cv::THRESH_BINARY);
+                cv::add(image, warped_ad, output, mask);
+            }
+            break;
+        
+        default:
+            output = image.clone();
+            break;
+    }
+}
+
+// レンダリング実行
+bool AdRenderer::render(const cv::Mat& image,
+                       const cv::Mat& rvec,
+                       const cv::Mat& tvec,
+                       cv::Mat& output)
+{
+    // 入力検証
+    if (!validateInputs(image, rvec, tvec)) {
+        return false;
+    }
+    
+    try {
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+        // 1. 3D点を2Dに投影
+        std::vector<cv::Point2f> projected_points;
+        projectPoints(rvec, tvec, projected_points);
+        
+        // 投影結果確認
+        for (const auto& pt : projected_points) {
+            if (pt.x < 0 || pt.x >= image.cols || pt.y < 0 || pt.y >= image.rows) {
+                last_error_ = "Projected points out of image bounds";
+                std::cerr << "WARNING: " << last_error_ << std::endl;
+                // エラーではなく警告として処理を続行
+            }
+        }
+        
+        // 2. 透視変換行列計算
+        std::vector<cv::Point2f> src_points = {
+            cv::Point2f(0, 0),
+            cv::Point2f(static_cast<float>(ad_texture_.cols), 0),
+            cv::Point2f(static_cast<float>(ad_texture_.cols), static_cast<float>(ad_texture_.rows)),
+            cv::Point2f(0, static_cast<float>(ad_texture_.rows))
+        };
+        
+        cv::Mat transform_matrix;
+        computePerspectiveTransform(src_points, projected_points, transform_matrix);
+        
+        // 3. テクスチャ適用
+        applyTexture(image, transform_matrix, ad_texture_, output);
+        
+        // 処理時間計測
+        auto end_time = std::chrono::high_resolution_clock::now();
+        processing_time_ = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+        
+        last_error_.clear();
+        return true;
+    }
+    catch (const std::exception& e) {
+        last_error_ = std::string("Rendering failed: ") + e.what();
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+}
 
 } // namespace Rendering
 } // namespace VirtualAd
