@@ -150,6 +150,26 @@ target_link_libraries(Rendering
         ${OpenCV_LIBS}
 )
 
+# Integrationライブラリ（Phase 6）
+add_library(Integration STATIC
+    src/integration/IntegratedPipeline.cpp
+)
+
+target_include_directories(Integration
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(Integration
+    PUBLIC
+        ${OpenCV_LIBS}
+        Tracking
+        Inference
+        Keyer
+        Rendering
+)
+
 # サブディレクトリ（Phase 2以降で追加）
 # add_subdirectory(src/ai)
 # add_subdirectory(src/rendering)
@@ -298,6 +318,17 @@ add_executable(TestAdRenderer
 target_link_libraries(TestAdRenderer
     PRIVATE
         Rendering
+        ${OpenCV_LIBS}
+)
+
+# 統合パイプラインテストプログラム（Phase 6）
+add_executable(TestIntegratedPipeline
+    src/integration/test_integrated_pipeline.cpp
+)
+
+target_link_libraries(TestIntegratedPipeline
+    PRIVATE
+        Integration
         ${OpenCV_LIBS}
 )
 
