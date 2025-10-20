@@ -112,14 +112,108 @@ def main():
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     print(f"\nCheckpoint directory: {checkpoint_dir.absolute()}")
     
-    # TODO: Initialize data loaders (Step 5-2-2)
-    # TODO: Initialize model (Step 5-2-2)
-    # TODO: Initialize optimizer and loss function (Step 5-2-2)
+    # Initialize data loaders
+    print("\n" + "=" * 80)
+    print("Initializing Data Loaders")
+    print("=" * 80)
+    
+    train_annotations_path = Path(args.data_dir) / args.train_annotations
+    val_annotations_path = Path(args.data_dir) / args.val_annotations
+    
+    print(f"Train annotations: {train_annotations_path}")
+    print(f"Val annotations: {val_annotations_path}")
+    
+    train_dataset = CameraPoseDataset(
+        annotations=str(train_annotations_path),
+        transform=get_train_transforms(),
+        normalize_pose=True
+    )
+    
+    val_dataset = CameraPoseDataset(
+        annotations=str(val_annotations_path),
+        transform=get_val_transforms(),
+        normalize_pose=True
+    )
+    
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=(args.device == 'cuda'),
+        drop_last=True
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=args.val_batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=(args.device == 'cuda'),
+        drop_last=False
+    )
+    
+    print(f"Train dataset: {len(train_dataset)} samples, {len(train_loader)} batches")
+    print(f"Val dataset: {len(val_dataset)} samples, {len(val_loader)} batches")
+    
+    # Initialize model
+    print("\n" + "=" * 80)
+    print("Initializing Model")
+    print("=" * 80)
+    
+    model = create_model(
+        model_type=args.model_type,
+        pretrained=args.pretrained,
+        dropout=args.dropout
+    )
+    model = model.to(device)
+    
+    # Print model summary
+    from models import print_model_summary
+    print_model_summary(model, device=device)
+    
+    # Initialize optimizer
+    print("\n" + "=" * 80)
+    print("Initializing Optimizer")
+    print("=" * 80)
+    
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=args.lr,
+        weight_decay=args.weight_decay
+    )
+    
+    print(f"Optimizer: Adam")
+    print(f"Learning rate: {args.lr}")
+    print(f"Weight decay: {args.weight_decay}")
+    
+    # Initialize loss function
+    criterion = nn.MSELoss()
+    print(f"Loss function: MSELoss")
+    
+    # Load checkpoint if resuming
+    start_epoch = 0
+    best_val_loss = float('inf')
+    
+    if args.resume:
+        print("\n" + "=" * 80)
+        print("Loading Checkpoint")
+        print("=" * 80)
+        
+        checkpoint = torch.load(args.resume, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        best_val_loss = checkpoint.get('best_val_loss', float('inf'))
+        
+        print(f"Resumed from epoch {checkpoint['epoch']}")
+        print(f"Best validation loss: {best_val_loss:.6f}")
+    
     # TODO: Implement training loop (Step 5-2-3)
     # TODO: Implement validation loop (Step 5-2-4)
     # TODO: Implement checkpoint saving (Step 5-2-5)
     
-    print("\n[INFO] Basic structure ready. Next: implement data loaders and model initialization.")
+    print("\n[INFO] Initialization complete. Next: implement training and validation loops.")
 
 
 if __name__ == '__main__':
