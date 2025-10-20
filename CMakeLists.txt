@@ -263,6 +263,17 @@ target_link_libraries(TestSegmentation
         onnxruntime::onnxruntime
 )
 
+# デプス合成テストプログラム（Phase 4）
+add_executable(TestDepthCompositor
+    src/keyer/test_depth_compositor.cpp
+)
+
+target_link_libraries(TestDepthCompositor
+    PRIVATE
+        Keyer
+        ${OpenCV_LIBS}
+)
+
 # インストールターゲット
 install(TARGETS 
     VirtualAd 
@@ -274,6 +285,7 @@ install(TARGETS
     TestPoseRefinement
     DemoTrackingAI
     TestSegmentation
+    TestDepthCompositor
     RUNTIME DESTINATION bin
 )
 
