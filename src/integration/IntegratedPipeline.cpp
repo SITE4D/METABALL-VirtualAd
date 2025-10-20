@@ -324,7 +324,84 @@ bool IntegratedPipeline::processFrameSingleThread(std::shared_ptr<FrameData> fra
     std::cout << "[IntegratedPipeline] Keyer: " 
               << frame_data->keyer_time_ms << " ms" << std::endl;
     
-    // TODO: Part 3 - レンダリング・合成処理（次のステップで実装）
+    // ========================================================================
+    // レンダリング・合成処理
+    // ========================================================================
+    auto render_start = std::chrono::high_resolution_clock::now();
+    
+    // 1. 広告レンダリング（AdRenderer使用）
+    // NOTE: AdRendererは初期化とテクスチャ設定が必要なため、ダミー実装
+    // 実際のシステムでは事前に初期化・設定する必要がある
+    if (renderer_ && renderer_->isInitialized()) {
+        cv::Mat rendered;
+        if (renderer_->render(frame_data->image, frame_data->rvec, 
+                             frame_data->tvec, rendered)) {
+            frame_data->rendered_ad = rendered;
+            std::cout << "[IntegratedPipeline] Ad rendering: Success" << std::endl;
+        } else {
+            std::cerr << "[IntegratedPipeline] WARNING: Ad rendering failed: "
+                      << renderer_->getLastError() << std::endl;
+            // ダミー広告画像作成（緑色の矩形）
+            frame_data->rendered_ad = frame_data->image.clone();
+            cv::rectangle(frame_data->rendered_ad, frame_data->corners[0], 
+                         frame_data->corners[2], cv::Scalar(0, 255, 0), -1);
+        }
+    } else {
+        // レンダラー未初期化の場合、ダミー広告画像作成
+        std::cout << "[IntegratedPipeline] WARNING: Renderer not initialized, using dummy ad" << std::endl;
+        frame_data->rendered_ad = frame_data->image.clone();
+        if (frame_data->corners.size() == 4) {
+            cv::rectangle(frame_data->rendered_ad, frame_data->corners[0], 
+                         frame_data->corners[2], cv::Scalar(0, 255, 0), -1);
+        }
+    }
+    
+    // 2. デプス合成（DepthCompositor使用）
+    if (compositor_) {
+        cv::Mat composited;
+        if (compositor_->composite(frame_data->image, 
+                                  frame_data->segmentation_mask,
+                                  frame_data->depth_map,
+                                  frame_data->rendered_ad,
+                                  composited, 0.5f)) {
+            frame_data->final_output = composited;
+            std::cout << "[IntegratedPipeline] Depth compositing: Success" << std::endl;
+        } else {
+            std::cerr << "[IntegratedPipeline] WARNING: Compositing failed: "
+                      << compositor_->getLastError() << std::endl;
+            // フォールバック: レンダリング済み画像をそのまま使用
+            frame_data->final_output = frame_data->rendered_ad;
+        }
+    } else {
+        // コンポジター未作成の場合、レンダリング済み画像をそのまま使用
+        std::cout << "[IntegratedPipeline] WARNING: Compositor not available" << std::endl;
+        frame_data->final_output = frame_data->rendered_ad;
+    }
+    
+    auto render_end = std::chrono::high_resolution_clock::now();
+    frame_data->rendering_time_ms = std::chrono::duration<double, std::milli>(
+        render_end - render_start).count();
+    
+    std::cout << "[IntegratedPipeline] Rendering: " 
+              << frame_data->rendering_time_ms << " ms" << std::endl;
+    
+    // ========================================================================
+    // 統計情報更新
+    // ========================================================================
+    auto end_time = std::chrono::high_resolution_clock::now();
+    frame_data->total_time_ms = std::chrono::duration<double, std::milli>(
+        end_time - start_time).count();
+    
+    // スレッドセーフに統計情報を更新
+    {
+        std::lock_guard<std::mutex> lock(stats_mutex_);
+        statistics_.total_frames++;
+        statistics_.updateFrameTime(frame_data->total_time_ms);
+        statistics_.updateFPS(frame_data->timestamp);
+    }
+    
+    std::cout << "[IntegratedPipeline] Total processing time: " 
+              << frame_data->total_time_ms << " ms" << std::endl;
     
     return true;
 }
