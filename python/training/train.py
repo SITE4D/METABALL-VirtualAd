@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Training script for Camera Pose Estimation Model
+"""
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Dict, Optional
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+# Import project modules
+from dataset import CameraPoseDataset
+from transforms import get_train_transforms, get_val_transforms
+from models import create_model
+
+
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(
+        description='Train Camera Pose Estimation Model',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # Data parameters
+    parser.add_argument('--data_dir', type=str, required=True,
+                        help='Path to dataset directory')
+    parser.add_argument('--train_annotations', type=str, default='annotations_train.json',
+                        help='Training annotations filename')
+    parser.add_argument('--val_annotations', type=str, default='annotations_val.json',
+                        help='Validation annotations filename')
+    
+    # Model parameters
+    parser.add_argument('--model_type', type=str, default='resnet18',
+                        choices=['resnet18', 'ensemble'],
+                        help='Model architecture type')
+    parser.add_argument('--pretrained', action='store_true', default=True,
+                        help='Use pretrained ImageNet weights')
+    parser.add_argument('--dropout', type=float, default=0.5,
+                        help='Dropout rate')
+    
+    # Training parameters
+    parser.add_argument('--epochs', type=int, default=100,
+                        help='Number of training epochs')
+    parser.add_argument('--batch_size', type=int, default=32,
+                        help='Training batch size')
+    parser.add_argument('--val_batch_size', type=int, default=64,
+                        help='Validation batch size')
+    parser.add_argument('--lr', type=float, default=1e-4,
+                        help='Initial learning rate')
+    parser.add_argument('--weight_decay', type=float, default=1e-4,
+                        help='Weight decay (L2 regularization)')
+    parser.add_argument('--num_workers', type=int, default=4,
+                        help='Number of data loading workers')
+    
+    # Checkpoint parameters
+    parser.add_argument('--checkpoint_dir', type=str, default='checkpoints',
+                        help='Directory to save checkpoints')
+    parser.add_argument('--save_freq', type=int, default=10,
+                        help='Save checkpoint every N epochs')
+    parser.add_argument('--resume', type=str, default=None,
+                        help='Path to checkpoint to resume training')
+    
+    # Device parameters
+    parser.add_argument('--device', type=str, default='cuda',
+                        choices=['cuda', 'cpu'],
+                        help='Device to use for training')
+    parser.add_argument('--gpu_id', type=int, default=0,
+                        help='GPU ID to use')
+    
+    # Logging parameters
+    parser.add_argument('--log_interval', type=int, default=10,
+                        help='Log training status every N batches')
+    parser.add_argument('--verbose', action='store_true',
+                        help='Print verbose output')
+    
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    """Main training function"""
+    # Parse arguments
+    args = parse_args()
+    
+    # Print configuration
+    print("=" * 80)
+    print("Training Configuration")
+    print("=" * 80)
+    for arg, value in vars(args).items():
+        print(f"{arg:20s}: {value}")
+    print("=" * 80)
+    
+    # Set device
+    if args.device == 'cuda' and torch.cuda.is_available():
+        device = torch.device(f'cuda:{args.gpu_id}')
+        print(f"\nUsing GPU: {torch.cuda.get_device_name(args.gpu_id)}")
+    else:
+        device = torch.device('cpu')
+        print("\nUsing CPU")
+    
+    # Create checkpoint directory
+    checkpoint_dir = Path(args.checkpoint_dir)
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    print(f"\nCheckpoint directory: {checkpoint_dir.absolute()}")
+    
+    # TODO: Initialize data loaders (Step 5-2-2)
+    # TODO: Initialize model (Step 5-2-2)
+    # TODO: Initialize optimizer and loss function (Step 5-2-2)
+    # TODO: Implement training loop (Step 5-2-3)
+    # TODO: Implement validation loop (Step 5-2-4)
+    # TODO: Implement checkpoint saving (Step 5-2-5)
+    
+    print("\n[INFO] Basic structure ready. Next: implement data loaders and model initialization.")
+
+
+if __name__ == '__main__':
+    main()
