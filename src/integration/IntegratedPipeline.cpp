@@ -180,9 +180,50 @@ void IntegratedPipeline::stop() {
 }
 
 bool IntegratedPipeline::processFrame(const cv::Mat& frame, cv::Mat& output) {
-    // TODO: 次のステップで実装
-    std::cout << "[IntegratedPipeline] processFrame() - Not implemented yet" << std::endl;
-    return false;
+    // 入力画像チェック
+    if (frame.empty()) {
+        std::cerr << "[IntegratedPipeline] ERROR: Input frame is empty" << std::endl;
+        return false;
+    }
+    
+    // モード別処理
+    if (mode_ == Mode::SINGLE_THREAD) {
+        // ========================================================================
+        // シングルスレッドモード
+        // ========================================================================
+        
+        // FrameData作成
+        auto frame_data = std::make_shared<FrameData>();
+        frame_data->image = frame.clone();
+        frame_data->frame_id = statistics_.total_frames;
+        
+        // タイムスタンプ計算（秒）
+        auto now = std::chrono::high_resolution_clock::now();
+        auto duration = now.time_since_epoch();
+        frame_data->timestamp = std::chrono::duration<double>(duration).count();
+        
+        // シングルスレッド処理実行
+        if (processFrameSingleThread(frame_data)) {
+            // 出力画像取得
+            if (!frame_data->final_output.empty()) {
+                output = frame_data->final_output;
+                return true;
+            } else {
+                std::cerr << "[IntegratedPipeline] ERROR: Final output is empty" << std::endl;
+                return false;
+            }
+        } else {
+            std::cerr << "[IntegratedPipeline] ERROR: Single-thread processing failed" << std::endl;
+            return false;
+        }
+    } else {
+        // ========================================================================
+        // マルチスレッドモード（次のステップで実装）
+        // ========================================================================
+        
+        std::cerr << "[IntegratedPipeline] ERROR: Multi-thread mode not implemented yet" << std::endl;
+        return false;
+    }
 }
 
 PipelineStatistics IntegratedPipeline::getStatistics() const {
@@ -191,8 +232,48 @@ PipelineStatistics IntegratedPipeline::getStatistics() const {
 }
 
 bool IntegratedPipeline::processFrameSingleThread(std::shared_ptr<FrameData> frame_data) {
-    // TODO: 次のステップで実装
-    return false;
+    auto start_time = std::chrono::high_resolution_clock::now();
+    
+    // データバリデーション
+    if (!frame_data || !frame_data->validate()) {
+        std::cerr << "[IntegratedPipeline] ERROR: Invalid frame data" << std::endl;
+        return false;
+    }
+    
+    // ========================================================================
+    // トラッキング処理
+    // ========================================================================
+    auto tracking_start = std::chrono::high_resolution_clock::now();
+    
+    // 1. 特徴点検出・トラッキング（FeatureTracker使用）
+    // NOTE: FeatureTrackerはinitialize()が必要なため、ここでは簡易的な処理
+    // 実際のシステムでは事前にリファレンスフレームで初期化する必要がある
+    
+    // ダミーデータ設定（実装後は実際のトラッキング結果に置き換え）
+    frame_data->tracking_success = true;
+    frame_data->rvec = cv::Mat::zeros(3, 1, CV_64F);
+    frame_data->tvec = cv::Mat::zeros(3, 1, CV_64F);
+    frame_data->tvec.at<double>(2, 0) = 3.0;  // Z軸方向に3メートル
+    
+    // ダミーコーナー設定（1920x1080の画面中央に200x200のバックネット）
+    frame_data->corners.clear();
+    frame_data->corners.push_back(cv::Point2f(860, 440));  // 左上
+    frame_data->corners.push_back(cv::Point2f(1060, 440)); // 右上
+    frame_data->corners.push_back(cv::Point2f(1060, 640)); // 右下
+    frame_data->corners.push_back(cv::Point2f(860, 640));  // 左下
+    frame_data->inlier_count = 4;
+    
+    auto tracking_end = std::chrono::high_resolution_clock::now();
+    frame_data->tracking_time_ms = std::chrono::duration<double, std::milli>(
+        tracking_end - tracking_start).count();
+    
+    std::cout << "[IntegratedPipeline] Tracking: " 
+              << frame_data->tracking_time_ms << " ms" << std::endl;
+    
+    // TODO: Part 2 - キーヤー処理（次のステップで実装）
+    // TODO: Part 3 - レンダリング・合成処理（次のステップで実装）
+    
+    return true;
 }
 
 void IntegratedPipeline::trackingThreadFunc() {
