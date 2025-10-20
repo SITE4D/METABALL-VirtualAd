@@ -26,6 +26,86 @@ from models import create_model
 from transforms import get_inference_transforms
 
 
+def load_checkpoint(checkpoint_path, model, device):
+    """
+    Load model checkpoint.
+    
+    Args:
+        checkpoint_path: Path to checkpoint file
+        model: Model instance to load weights into
+        device: Device to load model on
+        
+    Returns:
+        Loaded model and checkpoint metadata
+    """
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+    
+    print(f"Loading checkpoint from: {checkpoint_path}")
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    
+    # Load model state dict
+    if 'model_state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['model_state_dict'])
+        epoch = checkpoint.get('epoch', 'unknown')
+        val_loss = checkpoint.get('val_loss', 'unknown')
+        print(f"Loaded checkpoint from epoch {epoch}, val_loss: {val_loss}")
+    else:
+        # Assume checkpoint is just the state dict
+        model.load_state_dict(checkpoint)
+        print("Loaded checkpoint (state dict only)")
+    
+    model.to(device)
+    model.eval()
+    
+    return model, checkpoint
+
+
+def run_inference(model, data_loader, device):
+    """
+    Run inference on dataset and collect predictions.
+    
+    Args:
+        model: Trained model
+        data_loader: DataLoader for test dataset
+        device: Device to run inference on
+        
+    Returns:
+        predictions: List of predicted poses [N, 6]
+        ground_truths: List of ground truth poses [N, 6]
+        image_paths: List of image paths
+    """
+    predictions = []
+    ground_truths = []
+    image_paths = []
+    
+    print("Running inference...")
+    model.eval()
+    
+    with torch.no_grad():
+        for batch_idx, (images, poses) in enumerate(tqdm(data_loader, desc="Inference")):
+            # Move to device
+            images = images.to(device)
+            
+            # Forward pass
+            pred_poses = model(images)
+            
+            # Collect results
+            predictions.append(pred_poses.cpu().numpy())
+            ground_truths.append(poses.numpy())
+            
+            # Note: image paths would need to be added to dataset __getitem__ return
+            # For now, we'll skip this or handle separately
+    
+    # Concatenate all batches
+    predictions = np.concatenate(predictions, axis=0)
+    ground_truths = np.concatenate(ground_truths, axis=0)
+    
+    print(f"Inference complete: {len(predictions)} samples processed")
+    
+    return predictions, ground_truths
+
+
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
