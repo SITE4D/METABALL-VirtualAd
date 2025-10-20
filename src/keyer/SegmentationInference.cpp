@@ -165,6 +165,48 @@ void SegmentationInference::preprocessImage(const cv::Mat& image, std::vector<fl
     }
 }
 
+// 出力テンソルを後処理
+void SegmentationInference::postprocessOutput(const std::vector<float>& output_tensor,
+                                             const cv::Size& original_size,
+                                             cv::Mat& mask)
+{
+    // 出力形状: [1, 4, H, W]
+    int output_h = input_size_;
+    int output_w = input_size_;
+    int num_classes = 4;
+    
+    // 一時マスク作成（モデル出力サイズ）
+    cv::Mat temp_mask(output_h, output_w, CV_8UC1);
+    
+    // 各ピクセルで最大確率のクラスを選択
+    for (int y = 0; y < output_h; y++) {
+        for (int x = 0; x < output_w; x++) {
+            float max_prob = -std::numeric_limits<float>::infinity();
+            int max_class = 0;
+            
+            for (int c = 0; c < num_classes; c++) {
+                // テンソルインデックス計算（[batch, class, y, x]）
+                size_t index = c * output_h * output_w + y * output_w + x;
+                float prob = output_tensor[index];
+                
+                if (prob > max_prob) {
+                    max_prob = prob;
+                    max_class = c;
+                }
+            }
+            
+            temp_mask.at<uchar>(y, x) = static_cast<uchar>(max_class);
+        }
+    }
+    
+    // 元画像サイズにリサイズ
+    if (original_size.width != input_size_ || original_size.height != input_size_) {
+        cv::resize(temp_mask, mask, original_size, 0, 0, cv::INTER_NEAREST);
+    } else {
+        mask = temp_mask.clone();
+    }
+}
+
 // マスクをカラー画像に変換（静的メソッド）
 void SegmentationInference::maskToColor(const cv::Mat& mask, cv::Mat& color_mask)
 {
