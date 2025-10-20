@@ -43,6 +43,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 # コアライブラリ（Phase 1）
 add_library(Core STATIC
     src/core/FramePipeline.cpp
+    src/core/FilePlaybackSource.cpp
 )
 
 target_include_directories(Core
