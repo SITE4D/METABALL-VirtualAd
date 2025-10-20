@@ -88,17 +88,95 @@ struct FrameData {
     double total_time_ms;
     
     // ========================================================================
-    // コンストラクタ（Part 2で実装）
+    // コンストラクタ
     // ========================================================================
     
-    FrameData();
+    /**
+     * @brief デフォルトコンストラクタ
+     * 
+     * すべてのメンバー変数をデフォルト値で初期化します。
+     */
+    FrameData()
+        : frame_id(0)
+        , timestamp(0.0)
+        , tracking_success(false)
+        , inlier_count(0)
+        , tracking_time_ms(0.0)
+        , keyer_time_ms(0.0)
+        , rendering_time_ms(0.0)
+        , total_time_ms(0.0)
+    {
+    }
     
     // ========================================================================
-    // ヘルパーメソッド（Part 2で実装）
+    // ヘルパーメソッド
     // ========================================================================
     
-    void clear();
-    bool validate() const;
+    /**
+     * @brief すべてのデータをクリア
+     * 
+     * この関数は、FrameDataのすべてのメンバー変数を初期状態に戻します。
+     * メモリ効率のため、cv::Matはreleaseされます。
+     */
+    void clear() {
+        frame_id = 0;
+        timestamp = 0.0;
+        
+        // 画像データ解放
+        image.release();
+        
+        // トラッキング結果クリア
+        tracking_success = false;
+        rvec.release();
+        tvec.release();
+        corners.clear();
+        inlier_count = 0;
+        
+        // キーヤー結果クリア
+        segmentation_mask.release();
+        depth_map.release();
+        
+        // レンダリング結果クリア
+        rendered_ad.release();
+        final_output.release();
+        
+        // 統計情報クリア
+        tracking_time_ms = 0.0;
+        keyer_time_ms = 0.0;
+        rendering_time_ms = 0.0;
+        total_time_ms = 0.0;
+    }
+    
+    /**
+     * @brief FrameDataの妥当性をチェック
+     * 
+     * @return 妥当な場合true、そうでない場合false
+     * 
+     * 妥当性チェック項目:
+     * - frame_idが0以上
+     * - timestampが0以上
+     * - imageが空でない
+     * - imageのサイズが妥当（width > 0 && height > 0）
+     */
+    bool validate() const {
+        // 基本情報チェック
+        if (frame_id < 0) {
+            return false;
+        }
+        if (timestamp < 0.0) {
+            return false;
+        }
+        
+        // 画像データチェック
+        if (image.empty()) {
+            return false;
+        }
+        if (image.cols <= 0 || image.rows <= 0) {
+            return false;
+        }
+        
+        return true;
+    }
 };
 
 } // namespace Integration
