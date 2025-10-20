@@ -11,6 +11,7 @@
 #include "../core/FilePlaybackSource.h"
 #include "CameraPoseRefiner.h"
 #include "../tracking/PnPSolver.h"
+#include "../tracking/FeatureTracker.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <iomanip>
@@ -228,6 +229,7 @@ int main(int argc, char** argv) {
     std::string model_path = "models/camera_pose_net.onnx";
     std::string mode_str = "BLENDED";
     float blend_alpha = 0.5f;
+    bool use_feature_tracking = true;  // Use FeatureTracker by default
     
     if (argc >= 2) {
         video_path = argv[1];
@@ -240,6 +242,9 @@ int main(int argc, char** argv) {
     }
     if (argc >= 5) {
         blend_alpha = std::stof(argv[4]);
+    }
+    if (argc >= 6) {
+        use_feature_tracking = (std::string(argv[5]) == "true");
     }
     
     std::cout << "Configuration:" << std::endl;
