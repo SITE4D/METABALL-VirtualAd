@@ -138,10 +138,96 @@ bool AdRenderer::isInitialized() const
     return is_initialized_;
 }
 
+// 入力検証
+bool AdRenderer::validateInputs(const cv::Mat& image,
+                               const cv::Mat& rvec,
+                               const cv::Mat& tvec)
+{
+    // 初期化確認
+    if (!is_initialized_) {
+        last_error_ = "AdRenderer not initialized";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    // 入力画像確認
+    if (image.empty()) {
+        last_error_ = "Empty input image";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    if (image.type() != CV_8UC3) {
+        last_error_ = "Input image must be CV_8UC3 (BGR)";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    // rvec確認
+    if (rvec.empty()) {
+        last_error_ = "Empty rotation vector";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    if (rvec.rows * rvec.cols != 3) {
+        last_error_ = "Rotation vector must be 3x1 or 1x3";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    // tvec確認
+    if (tvec.empty()) {
+        last_error_ = "Empty translation vector";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    if (tvec.rows * tvec.cols != 3) {
+        last_error_ = "Translation vector must be 3x1 or 1x3";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    // バックネット3D座標確認
+    if (backnet_corners_3d_.size() != 4) {
+        last_error_ = "Backnet plane not set (need 4 corners)";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    // 広告テクスチャ確認
+    if (ad_texture_.empty()) {
+        last_error_ = "Ad texture not set";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    return true;
+}
+
+// 3D点を2Dに投影
+void AdRenderer::projectPoints(const cv::Mat& rvec,
+                              const cv::Mat& tvec,
+                              std::vector<cv::Point2f>& projected_points)
+{
+    // OpenCV projectPoints使用
+    cv::projectPoints(backnet_corners_3d_, rvec, tvec,
+                     camera_matrix_, dist_coeffs_,
+                     projected_points);
+}
+
+// 透視変換行列計算
+void AdRenderer::computePerspectiveTransform(
+    const std::vector<cv::Point2f>& src_points,
+    const std::vector<cv::Point2f>& dst_points,
+    cv::Mat& transform_matrix)
+{
+    // 4点対応から透視変換行列を計算
+    transform_matrix = cv::getPerspectiveTransform(src_points, dst_points);
+}
+
 // 次のパートで実装予定:
-// - validateInputs()
-// - projectPoints()
-// - computePerspectiveTransform()
 // - applyTexture()
 // - render()
 
