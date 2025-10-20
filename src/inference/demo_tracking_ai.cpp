@@ -152,7 +152,8 @@ void drawCorners(cv::Mat& frame, const std::vector<cv::Point2f>& corners) {
  */
 void drawStatsOverlay(cv::Mat& frame, int frame_num, double fps, 
                      const std::string& mode, double processing_time,
-                     float blend_alpha) {
+                     float blend_alpha, const FeatureTracker* tracker = nullptr,
+                     bool use_tracking = false) {
     int y = 30;
     int line_height = 30;
     cv::Scalar color(0, 255, 0);
@@ -160,10 +161,13 @@ void drawStatsOverlay(cv::Mat& frame, int frame_num, double fps,
     double font_scale = 0.7;
     int thickness = 2;
     
+    // Calculate background height based on content
+    int bg_height = use_tracking ? 210 : 150;
+    
     // Draw semi-transparent background
-    cv::rectangle(frame, cv::Point(10, 10), cv::Point(450, 150), 
+    cv::rectangle(frame, cv::Point(10, 10), cv::Point(450, bg_height), 
                  cv::Scalar(0, 0, 0), -1);
-    cv::rectangle(frame, cv::Point(10, 10), cv::Point(450, 150), 
+    cv::rectangle(frame, cv::Point(10, 10), cv::Point(450, bg_height), 
                  cv::Scalar(255, 255, 255), 2);
     
     // Draw text
@@ -190,6 +194,21 @@ void drawStatsOverlay(cv::Mat& frame, int frame_num, double fps,
     oss.str("");
     oss << "Time: " << std::fixed << std::setprecision(2) << processing_time << " ms";
     cv::putText(frame, oss.str(), cv::Point(20, y), font, font_scale, color, thickness);
+    y += line_height;
+    
+    // Draw tracking stats if available
+    if (use_tracking && tracker) {
+        oss.str("");
+        oss << "Tracking: " << (tracker->getState() == TrackingState::TRACKING ? "OK" : "LOST");
+        cv::Scalar tracking_color = (tracker->getState() == TrackingState::TRACKING) ? 
+            cv::Scalar(0, 255, 0) : cv::Scalar(0, 165, 255);
+        cv::putText(frame, oss.str(), cv::Point(20, y), font, font_scale, tracking_color, thickness);
+        y += line_height;
+        
+        oss.str("");
+        oss << "Features: " << tracker->getTrackedFeatureCount();
+        cv::putText(frame, oss.str(), cv::Point(20, y), font, font_scale, color, thickness);
+    }
 }
 
 /**
@@ -366,6 +385,7 @@ int main(int argc, char** argv) {
         
         CameraPose pose;
         std::vector<uchar> inlier_mask;
+        std::vector<cv::Point2f> image_points;
         bool success = false;
         
         if (use_feature_tracking && feature_tracker && tracker_initialized) {
@@ -373,7 +393,7 @@ int main(int argc, char** argv) {
             success = feature_tracker->track(frame, pose);
         } else {
             // Use fixed corner detection + refinement
-            std::vector<cv::Point2f> image_points = detectImagePoints(frame);
+            image_points = detectImagePoints(frame);
             success = refiner.refinePose(frame, object_points, image_points, pose, inlier_mask);
         }
         
@@ -403,7 +423,8 @@ int main(int argc, char** argv) {
         
         // Draw overlay statistics
         drawStatsOverlay(display_frame, frame_count, fps, mode_str, 
-                        processing_time, refiner.getBlendAlpha());
+                        processing_time, refiner.getBlendAlpha(),
+                        feature_tracker.get(), use_feature_tracking);
         
         // Draw help overlay
         drawHelpOverlay(display_frame);
