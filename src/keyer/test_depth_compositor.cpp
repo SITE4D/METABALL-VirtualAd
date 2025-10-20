@@ -207,4 +207,54 @@ bool testPerformance()
     }
 }
 
-// main関数は次のパートで実装
+/**
+ * @brief メイン関数
+ */
+int main()
+{
+    std::cout << "======================================" << std::endl;
+    std::cout << "DepthCompositor Test Program" << std::endl;
+    std::cout << "======================================" << std::endl;
+    
+    int passed = 0;
+    int failed = 0;
+    
+    // テスト1: シンプル合成
+    if (testSimpleComposite()) {
+        passed++;
+    } else {
+        failed++;
+    }
+    
+    std::cout << "\nPress any key to continue..." << std::endl;
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+    
+    // テスト2: デプスベース合成
+    if (testDepthComposite()) {
+        passed++;
+    } else {
+        failed++;
+    }
+    
+    std::cout << "\nPress any key to continue..." << std::endl;
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+    
+    // テスト3: パフォーマンステスト
+    if (testPerformance()) {
+        passed++;
+    } else {
+        failed++;
+    }
+    
+    // 結果サマリー
+    std::cout << "\n======================================" << std::endl;
+    std::cout << "Test Summary" << std::endl;
+    std::cout << "======================================" << std::endl;
+    std::cout << "Passed: " << passed << " / " << (passed + failed) << std::endl;
+    std::cout << "Failed: " << failed << " / " << (passed + failed) << std::endl;
+    std::cout << "======================================" << std::endl;
+    
+    return (failed == 0) ? 0 : 1;
+}
