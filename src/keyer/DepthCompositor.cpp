@@ -121,6 +121,55 @@ bool DepthCompositor::validateInputs(const cv::Mat& image,
     return true;
 }
 
+// シンプル合成を実行（デプス情報なし）
+bool DepthCompositor::compositeSimple(const cv::Mat& image,
+                                     const cv::Mat& segmentation_mask,
+                                     const cv::Mat& ad_texture,
+                                     cv::Mat& output)
+{
+    // 入力検証（デプスマップなし）
+    cv::Mat empty_depth;
+    if (!validateInputs(image, segmentation_mask, empty_depth, ad_texture)) {
+        return false;
+    }
+    
+    try {
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+        // 広告テクスチャをリサイズ
+        cv::Mat resized_ad;
+        resizeAdTexture(ad_texture, image.size(), resized_ad);
+        
+        // 出力画像作成
+        output = image.clone();
+        
+        // ピクセル単位合成
+        for (int y = 0; y < image.rows; y++) {
+            for (int x = 0; x < image.cols; x++) {
+                uchar class_id = segmentation_mask.at<uchar>(y, x);
+                
+                // バックネットクラスの場合のみ広告で置き換え
+                if (class_id == static_cast<uchar>(SegmentationClass::BACKNET)) {
+                    output.at<cv::Vec3b>(y, x) = resized_ad.at<cv::Vec3b>(y, x);
+                }
+                // その他（選手、審判、背景）は元画像のまま
+            }
+        }
+        
+        // 処理時間計測
+        auto end_time = std::chrono::high_resolution_clock::now();
+        processing_time_ = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+        
+        last_error_.clear();
+        return true;
+    }
+    catch (const std::exception& e) {
+        last_error_ = std::string("Simple compositing failed: ") + e.what();
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+}
+
 // 広告テクスチャをリサイズ（静的メソッド）
 void DepthCompositor::resizeAdTexture(const cv::Mat& ad_texture,
                                      const cv::Size& target_size,
