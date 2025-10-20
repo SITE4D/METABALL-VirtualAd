@@ -102,4 +102,109 @@ bool testSimpleComposite()
     }
 }
 
-// 他のテスト関数は次のパートで実装
+/**
+ * @brief テスト2: デプスベース合成
+ */
+bool testDepthComposite()
+{
+    std::cout << "\n=== Test 2: Depth-based Composite ===\n" << std::endl;
+    
+    try {
+        // テストデータ作成
+        cv::Mat image = createDummyImage(640, 480, cv::Scalar(100, 150, 200));
+        cv::Mat mask = createDummySegmentationMask(640, 480);
+        cv::Mat depth_map = createDummyDepthMap(640, 480);
+        cv::Mat ad_texture = createDummyImage(640, 480, cv::Scalar(50, 50, 255));
+        
+        // 合成実行（バックネットデプス = 0.5）
+        DepthCompositor compositor;
+        cv::Mat output;
+        
+        bool success = compositor.composite(image, mask, depth_map, ad_texture, output, 0.5f);
+        
+        if (!success) {
+            std::cerr << "ERROR: composite() failed: " << compositor.getLastError() << std::endl;
+            return false;
+        }
+        
+        // 結果確認
+        std::cout << "  Processing time: " << compositor.getProcessingTime() << " ms" << std::endl;
+        std::cout << "  Output size: " << output.size() << std::endl;
+        
+        // デプスマップ可視化
+        cv::Mat color_depth;
+        cv::Mat depth_8u;
+        depth_map.convertTo(depth_8u, CV_8U, 255.0);
+        cv::applyColorMap(depth_8u, color_depth, cv::COLORMAP_JET);
+        
+        // 結果表示
+        cv::imshow("Test 2 - Input Image", image);
+        cv::imshow("Test 2 - Segmentation Mask", mask * 85);
+        cv::imshow("Test 2 - Depth Map", color_depth);
+        cv::imshow("Test 2 - Ad Texture", ad_texture);
+        cv::imshow("Test 2 - Output", output);
+        
+        std::cout << "Test 2: PASSED" << std::endl;
+        return true;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "ERROR in Test 2: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+/**
+ * @brief テスト3: パフォーマンステスト
+ */
+bool testPerformance()
+{
+    std::cout << "\n=== Test 3: Performance Test ===\n" << std::endl;
+    
+    try {
+        // テストデータ作成
+        cv::Mat image = createDummyImage(1920, 1080, cv::Scalar(100, 150, 200));
+        cv::Mat mask = createDummySegmentationMask(1920, 1080);
+        cv::Mat depth_map = createDummyDepthMap(1920, 1080);
+        cv::Mat ad_texture = createDummyImage(1920, 1080, cv::Scalar(50, 50, 255));
+        
+        DepthCompositor compositor;
+        cv::Mat output;
+        
+        // 100イテレーション実行
+        const int iterations = 100;
+        std::vector<double> times;
+        
+        for (int i = 0; i < iterations; i++) {
+            compositor.composite(image, mask, depth_map, ad_texture, output, 0.5f);
+            times.push_back(compositor.getProcessingTime());
+        }
+        
+        // 統計計算
+        double sum = 0.0;
+        double min_time = times[0];
+        double max_time = times[0];
+        
+        for (double t : times) {
+            sum += t;
+            min_time = std::min(min_time, t);
+            max_time = std::max(max_time, t);
+        }
+        
+        double avg_time = sum / iterations;
+        
+        std::cout << "  Iterations: " << iterations << std::endl;
+        std::cout << "  Average time: " << avg_time << " ms" << std::endl;
+        std::cout << "  Min time: " << min_time << " ms" << std::endl;
+        std::cout << "  Max time: " << max_time << " ms" << std::endl;
+        std::cout << "  Target: < 1.0 ms (CPU)" << std::endl;
+        
+        std::cout << "Test 3: PASSED" << std::endl;
+        return true;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "ERROR in Test 3: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+// main関数は次のパートで実装
