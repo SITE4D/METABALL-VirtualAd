@@ -69,6 +69,55 @@ int main(int argc, char* argv[])
     // SegmentationInference初期化
     std::cout << "Initializing SegmentationInference..." << std::endl;
     SegmentationInference seg_inference(512);  // 入力サイズ512x512
+    std::cout << std::endl;
+    
+    // モデルロード
+    std::cout << "Loading model..." << std::endl;
+    if (!seg_inference.loadModel(model_path)) {
+        std::cerr << "ERROR: Failed to load model" << std::endl;
+        std::cerr << "  " << seg_inference.getLastError() << std::endl;
+        return 1;
+    }
+    std::cout << "Model loaded successfully!" << std::endl;
+    std::cout << std::endl;
+    
+    // 推論実行
+    std::cout << "Running inference..." << std::endl;
+    cv::Mat mask;
+    if (!seg_inference.infer(image, mask)) {
+        std::cerr << "ERROR: Inference failed" << std::endl;
+        std::cerr << "  " << seg_inference.getLastError() << std::endl;
+        return 1;
+    }
+    
+    double inference_time = seg_inference.getInferenceTime();
+    std::cout << "Inference completed successfully!" << std::endl;
+    std::cout << "  Inference time: " << inference_time << " ms" << std::endl;
+    std::cout << "  Mask size: " << mask.cols << "x" << mask.rows << std::endl;
+    std::cout << std::endl;
+    
+    // マスク統計情報
+    std::cout << "Mask statistics:" << std::endl;
+    int class_counts[4] = {0, 0, 0, 0};
+    for (int y = 0; y < mask.rows; y++) {
+        for (int x = 0; x < mask.cols; x++) {
+            uchar class_id = mask.at<uchar>(y, x);
+            if (class_id < 4) {
+                class_counts[class_id]++;
+            }
+        }
+    }
+    
+    int total_pixels = mask.rows * mask.cols;
+    std::cout << "  Background: " << class_counts[0] << " pixels (" 
+              << (100.0 * class_counts[0] / total_pixels) << "%)" << std::endl;
+    std::cout << "  Player:     " << class_counts[1] << " pixels (" 
+              << (100.0 * class_counts[1] / total_pixels) << "%)" << std::endl;
+    std::cout << "  Umpire:     " << class_counts[2] << " pixels (" 
+              << (100.0 * class_counts[2] / total_pixels) << "%)" << std::endl;
+    std::cout << "  Backnet:    " << class_counts[3] << " pixels (" 
+              << (100.0 * class_counts[3] / total_pixels) << "%)" << std::endl;
+    std::cout << std::endl;
     
     return 0;
 }
