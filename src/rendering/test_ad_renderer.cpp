@@ -127,4 +127,120 @@ bool testInitialization()
     }
 }
 
-// 他のテスト関数は次のパートで実装
+/**
+ * @brief テスト2: 基本レンダリングテスト
+ */
+bool testBasicRendering()
+{
+    std::cout << "\n=== Test 2: Basic Rendering ===" << std::endl;
+    
+    try {
+        // 初期化
+        AdRenderer renderer;
+        cv::Mat camera_matrix = createDummyCameraMatrix();
+        cv::Mat dist_coeffs = createDummyDistCoeffs();
+        renderer.initialize(camera_matrix, dist_coeffs);
+        
+        // バックネット設定
+        std::vector<cv::Point3f> backnet = createDummyBacknet();
+        renderer.setBacknetPlane(backnet);
+        
+        // 広告テクスチャ設定
+        cv::Mat ad_texture = createDummyAdTexture();
+        renderer.setAdTexture(ad_texture);
+        
+        // カメラポーズ生成
+        cv::Mat rvec, tvec;
+        createDummyPose(rvec, tvec);
+        
+        // 入力画像生成
+        cv::Mat image = createDummyImage();
+        
+        // レンダリング実行
+        cv::Mat output;
+        bool success = renderer.render(image, rvec, tvec, output);
+        
+        if (!success) {
+            std::cerr << "ERROR: render() failed: " << renderer.getLastError() << std::endl;
+            return false;
+        }
+        
+        // 結果確認
+        std::cout << "  Processing time: " << renderer.getProcessingTime() << " ms" << std::endl;
+        std::cout << "  Output size: " << output.size() << std::endl;
+        
+        // 結果表示
+        cv::imshow("Test 2 - Input", image);
+        cv::imshow("Test 2 - Ad Texture", ad_texture);
+        cv::imshow("Test 2 - Output", output);
+        
+        std::cout << "Test 2: PASSED" << std::endl;
+        return true;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "ERROR in Test 2: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+/**
+ * @brief テスト3: ブレンディングモードテスト
+ */
+bool testBlendingModes()
+{
+    std::cout << "\n=== Test 3: Blending Modes ===" << std::endl;
+    
+    try {
+        // 初期化
+        AdRenderer renderer;
+        cv::Mat camera_matrix = createDummyCameraMatrix();
+        cv::Mat dist_coeffs = createDummyDistCoeffs();
+        renderer.initialize(camera_matrix, dist_coeffs);
+        
+        // バックネット設定
+        std::vector<cv::Point3f> backnet = createDummyBacknet();
+        renderer.setBacknetPlane(backnet);
+        
+        // 広告テクスチャ設定
+        cv::Mat ad_texture = createDummyAdTexture();
+        renderer.setAdTexture(ad_texture);
+        
+        // カメラポーズ生成
+        cv::Mat rvec, tvec;
+        createDummyPose(rvec, tvec);
+        
+        // 入力画像生成
+        cv::Mat image = createDummyImage();
+        
+        // テスト3-1: REPLACEモード
+        renderer.setBlendMode(AdRenderer::BlendMode::REPLACE);
+        cv::Mat output_replace;
+        renderer.render(image, rvec, tvec, output_replace);
+        std::cout << "  REPLACE mode: " << renderer.getProcessingTime() << " ms" << std::endl;
+        cv::imshow("Test 3 - REPLACE", output_replace);
+        
+        // テスト3-2: ALPHA_BLENDモード（デフォルト: alpha=0.8）
+        renderer.setBlendMode(AdRenderer::BlendMode::ALPHA_BLEND);
+        renderer.setAlpha(0.8f);
+        cv::Mat output_alpha;
+        renderer.render(image, rvec, tvec, output_alpha);
+        std::cout << "  ALPHA_BLEND mode (alpha=0.8): " << renderer.getProcessingTime() << " ms" << std::endl;
+        cv::imshow("Test 3 - ALPHA_BLEND", output_alpha);
+        
+        // テスト3-3: ADDITIVEモード
+        renderer.setBlendMode(AdRenderer::BlendMode::ADDITIVE);
+        cv::Mat output_additive;
+        renderer.render(image, rvec, tvec, output_additive);
+        std::cout << "  ADDITIVE mode: " << renderer.getProcessingTime() << " ms" << std::endl;
+        cv::imshow("Test 3 - ADDITIVE", output_additive);
+        
+        std::cout << "Test 3: PASSED" << std::endl;
+        return true;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "ERROR in Test 3: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+// テスト4とmain関数は次のパートで実装
