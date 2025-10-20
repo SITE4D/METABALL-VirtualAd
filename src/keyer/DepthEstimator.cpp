@@ -129,6 +129,84 @@ bool DepthEstimator::loadModel(const std::string& model_path)
     }
 }
 
+// デプス推定を実行
+bool DepthEstimator::estimate(const cv::Mat& image, cv::Mat& depth_map)
+{
+    if (!is_loaded_) {
+        last_error_ = "Model not loaded";
+        return false;
+    }
+    
+    if (image.empty()) {
+        last_error_ = "Empty input image";
+        return false;
+    }
+    
+    try {
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+        // 前処理
+        std::vector<float> input_tensor;
+        preprocessImage(image, input_tensor);
+        
+        // 入力テンソル作成
+        std::vector<int64_t> input_shape = {1, 3, input_size_, input_size_};
+        auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        Ort::Value input_tensor_ort = Ort::Value::CreateTensor<float>(
+            memory_info, 
+            input_tensor.data(), 
+            input_tensor.size(),
+            input_shape.data(), 
+            input_shape.size()
+        );
+        
+        // 入力名・出力名取得
+        auto input_name_alloc = session_->GetInputNameAllocated(0, *allocator_);
+        auto output_name_alloc = session_->GetOutputNameAllocated(0, *allocator_);
+        
+        const char* input_names[] = {input_name_alloc.get()};
+        const char* output_names[] = {output_name_alloc.get()};
+        
+        // 推論実行
+        auto output_tensors = session_->Run(
+            Ort::RunOptions{nullptr},
+            input_names,
+            &input_tensor_ort,
+            1,
+            output_names,
+            1
+        );
+        
+        // 出力テンソル取得
+        float* output_data = output_tensors[0].GetTensorMutableData<float>();
+        auto output_shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
+        
+        // 出力サイズ計算
+        size_t output_size = 1;
+        for (auto dim : output_shape) {
+            output_size *= dim;
+        }
+        
+        // 出力テンソルをvectorにコピー
+        std::vector<float> output_tensor(output_data, output_data + output_size);
+        
+        // 後処理
+        postprocessOutput(output_tensor, image.size(), depth_map);
+        
+        // 推論時間計測
+        auto end_time = std::chrono::high_resolution_clock::now();
+        inference_time_ = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+        
+        last_error_.clear();
+        return true;
+    }
+    catch (const std::exception& e) {
+        last_error_ = std::string("Depth estimation failed: ") + e.what();
+        std::cerr << last_error_ << std::endl;
+        return false;
+    }
+}
+
 // 画像を前処理
 void DepthEstimator::preprocessImage(const cv::Mat& image, std::vector<float>& input_tensor)
 {
