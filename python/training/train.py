@@ -132,6 +132,41 @@ def validate(
     return avg_loss
 
 
+def save_checkpoint(
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    epoch: int,
+    val_loss: float,
+    checkpoint_path: Path,
+    is_best: bool = False
+) -> None:
+    """
+    Save model checkpoint
+    
+    Args:
+        model: The model to save
+        optimizer: The optimizer to save
+        epoch: Current epoch number
+        val_loss: Validation loss
+        checkpoint_path: Path to save checkpoint
+        is_best: Whether this is the best model so far
+    """
+    checkpoint = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'val_loss': val_loss,
+        'best_val_loss': val_loss if is_best else None
+    }
+    
+    torch.save(checkpoint, checkpoint_path)
+    
+    if is_best:
+        best_path = checkpoint_path.parent / 'best_model.pth'
+        torch.save(checkpoint, best_path)
+        print(f"[INFO] Saved best model to {best_path}")
+
+
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
@@ -318,11 +353,63 @@ def main():
         print(f"Resumed from epoch {checkpoint['epoch']}")
         print(f"Best validation loss: {best_val_loss:.6f}")
     
-    # TODO: Implement training loop (Step 5-2-3)
-    # TODO: Implement validation loop (Step 5-2-4)
-    # TODO: Implement checkpoint saving (Step 5-2-5)
+    # Training loop
+    print("\n" + "=" * 80)
+    print("Starting Training")
+    print("=" * 80)
     
-    print("\n[INFO] Initialization complete. Next: implement training and validation loops.")
+    for epoch in range(start_epoch, args.epochs):
+        print(f"\nEpoch {epoch + 1}/{args.epochs}")
+        
+        # Train
+        train_loss = train_one_epoch(
+            model=model,
+            train_loader=train_loader,
+            criterion=criterion,
+            optimizer=optimizer,
+            device=device,
+            epoch=epoch + 1,
+            log_interval=args.log_interval
+        )
+        
+        # Validate
+        val_loss = validate(
+            model=model,
+            val_loader=val_loader,
+            criterion=criterion,
+            device=device,
+            epoch=epoch + 1
+        )
+        
+        # Print epoch summary
+        print(f"\nEpoch {epoch + 1} Summary:")
+        print(f"  Train Loss: {train_loss:.6f}")
+        print(f"  Val Loss:   {val_loss:.6f}")
+        
+        # Save checkpoint
+        is_best = val_loss < best_val_loss
+        if is_best:
+            best_val_loss = val_loss
+            print(f"  [NEW BEST] Validation loss improved to {best_val_loss:.6f}")
+        
+        # Save regular checkpoint
+        if (epoch + 1) % args.save_freq == 0 or is_best:
+            checkpoint_path = checkpoint_dir / f"checkpoint_epoch_{epoch + 1:04d}.pth"
+            save_checkpoint(
+                model=model,
+                optimizer=optimizer,
+                epoch=epoch,
+                val_loss=val_loss,
+                checkpoint_path=checkpoint_path,
+                is_best=is_best
+            )
+            print(f"  Saved checkpoint to {checkpoint_path}")
+    
+    print("\n" + "=" * 80)
+    print("Training Complete!")
+    print("=" * 80)
+    print(f"Best validation loss: {best_val_loss:.6f}")
+    print(f"Checkpoints saved to: {checkpoint_dir.absolute()}")
 
 
 if __name__ == '__main__':
