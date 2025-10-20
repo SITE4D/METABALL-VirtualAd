@@ -79,6 +79,7 @@ target_link_libraries(Tools
 # Trackingライブラリ（Phase 2）
 add_library(Tracking STATIC
     src/tracking/FeatureDetector.cpp
+    src/tracking/FeatureMatcher.cpp
 )
 
 target_include_directories(Tracking
@@ -146,8 +147,20 @@ target_link_libraries(TestFeatureDetection
         ${OpenCV_LIBS}
 )
 
+# 特徴点マッチングテストプログラム（Phase 2）
+add_executable(TestFeatureMatching
+    src/tracking/test_feature_matching.cpp
+)
+
+target_link_libraries(TestFeatureMatching
+    PRIVATE
+        Core
+        Tracking
+        ${OpenCV_LIBS}
+)
+
 # インストールターゲット
-install(TARGETS VirtualAd AnnotationTool TestFeatureDetection
+install(TARGETS VirtualAd AnnotationTool TestFeatureDetection TestFeatureMatching
     RUNTIME DESTINATION bin
 )
 
