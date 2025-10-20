@@ -165,6 +165,47 @@ void DepthEstimator::preprocessImage(const cv::Mat& image, std::vector<float>& i
     }
 }
 
+// 出力テンソルを後処理
+void DepthEstimator::postprocessOutput(const std::vector<float>& output_tensor,
+                                      const cv::Size& original_size,
+                                      cv::Mat& depth_map)
+{
+    // 出力形状: [1, 1, H, W]
+    int output_h = input_size_;
+    int output_w = input_size_;
+    
+    // 一時デプスマップ作成（モデル出力サイズ）
+    cv::Mat temp_depth(output_h, output_w, CV_32FC1);
+    
+    // テンソルからMat形式に変換
+    for (int y = 0; y < output_h; y++) {
+        for (int x = 0; x < output_w; x++) {
+            size_t index = y * output_w + x;
+            temp_depth.at<float>(y, x) = output_tensor[index];
+        }
+    }
+    
+    // デプス値を0.0-1.0に正規化（小さいほど手前）
+    double min_val, max_val;
+    cv::minMaxLoc(temp_depth, &min_val, &max_val);
+    
+    cv::Mat normalized_depth;
+    if (max_val - min_val > 1e-6) {
+        // 反転: MiDaSは大きいほど手前なので、小さいほど手前に変換
+        normalized_depth = (max_val - temp_depth) / (max_val - min_val);
+    } else {
+        // デプス差がない場合は全て0.5
+        normalized_depth = cv::Mat(output_h, output_w, CV_32FC1, cv::Scalar(0.5f));
+    }
+    
+    // 元画像サイズにリサイズ
+    if (original_size.width != input_size_ || original_size.height != input_size_) {
+        cv::resize(normalized_depth, depth_map, original_size, 0, 0, cv::INTER_LINEAR);
+    } else {
+        depth_map = normalized_depth.clone();
+    }
+}
+
 // デプスマップを可視化（静的メソッド）
 void DepthEstimator::visualizeDepth(const cv::Mat& depth_map, 
                                    cv::Mat& color_depth,
