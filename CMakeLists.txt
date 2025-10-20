@@ -30,12 +30,13 @@ endif()
 # パッケージの検索
 
 find_package(OpenCV 4.8 REQUIRED)
+find_package(onnxruntime REQUIRED)  # Phase 3で有効化
 # find_package(Qt6 COMPONENTS Widgets REQUIRED)  # Phase 1以降で有効化
-# find_package(ONNX REQUIRED)  # Phase 2以降で有効化
 
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
+message(STATUS "ONNX Runtime found")
 
 # インクルードディレクトリ
 include_directories(${CMAKE_SOURCE_DIR}/src)
@@ -76,11 +77,12 @@ target_link_libraries(Tools
         ${OpenCV_LIBS}
 )
 
-# Trackingライブラリ（Phase 2）
+# Trackingライブラリ（Phase 2, Phase 2.5）
 add_library(Tracking STATIC
     src/tracking/FeatureDetector.cpp
     src/tracking/FeatureMatcher.cpp
     src/tracking/PnPSolver.cpp
+    src/tracking/FeatureTracker.cpp
 )
 
 target_include_directories(Tracking
@@ -92,6 +94,25 @@ target_include_directories(Tracking
 target_link_libraries(Tracking
     PUBLIC
         ${OpenCV_LIBS}
+)
+
+# Inferenceライブラリ（Phase 3）
+add_library(Inference STATIC
+    src/inference/ONNXInference.cpp
+    src/inference/CameraPoseRefiner.cpp
+)
+
+target_include_directories(Inference
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(Inference
+    PUBLIC
+        ${OpenCV_LIBS}
+        onnxruntime::onnxruntime
+        Tracking
 )
 
 # サブディレクトリ（Phase 2以降で追加）
@@ -160,8 +181,67 @@ target_link_libraries(TestFeatureMatching
         ${OpenCV_LIBS}
 )
 
+# 特徴トラッキングテストプログラム（Phase 2.5）
+add_executable(TestFeatureTracking
+    src/tracking/test_feature_tracking.cpp
+)
+
+target_link_libraries(TestFeatureTracking
+    PRIVATE
+        Core
+        Tracking
+        ${OpenCV_LIBS}
+)
+
+# ONNX推論テストプログラム（Phase 3）
+add_executable(TestONNXInference
+    src/inference/test_onnx_inference.cpp
+)
+
+target_link_libraries(TestONNXInference
+    PRIVATE
+        Inference
+        ${OpenCV_LIBS}
+        onnxruntime::onnxruntime
+)
+
+# ポーズ補正テストプログラム（Phase 3）
+add_executable(TestPoseRefinement
+    src/inference/test_pose_refinement.cpp
+)
+
+target_link_libraries(TestPoseRefinement
+    PRIVATE
+        Core
+        Inference
+        ${OpenCV_LIBS}
+        onnxruntime::onnxruntime
+)
+
+# AIトラッキングデモ（Phase 3）
+add_executable(DemoTrackingAI
+    src/inference/demo_tracking_ai.cpp
+)
+
+target_link_libraries(DemoTrackingAI
+    PRIVATE
+        Core
+        Tracking
+        Inference
+        ${OpenCV_LIBS}
+        onnxruntime::onnxruntime
+)
+
 # インストールターゲット
-install(TARGETS VirtualAd AnnotationTool TestFeatureDetection TestFeatureMatching
+install(TARGETS 
+    VirtualAd 
+    AnnotationTool 
+    TestFeatureDetection 
+    TestFeatureMatching 
+    TestFeatureTracking
+    TestONNXInference
+    TestPoseRefinement
+    DemoTrackingAI
     RUNTIME DESTINATION bin
 )
 
