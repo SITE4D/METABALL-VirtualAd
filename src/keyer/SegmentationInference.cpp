@@ -55,6 +55,80 @@ double SegmentationInference::getInferenceTime() const
     return inference_time_;
 }
 
+// ONNXモデルをロード
+bool SegmentationInference::loadModel(const std::string& model_path)
+{
+    try {
+        // セッションオプション作成
+        session_options_ = std::make_unique<Ort::SessionOptions>();
+        session_options_->SetIntraOpNumThreads(1);
+        session_options_->SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+        
+        // Windows用: ワイド文字列に変換
+#ifdef _WIN32
+        int size_needed = MultiByteToWideChar(CP_UTF8, 0, model_path.c_str(), 
+                                             static_cast<int>(model_path.length()), nullptr, 0);
+        std::wstring wmodel_path(size_needed, 0);
+        MultiByteToWideChar(CP_UTF8, 0, model_path.c_str(), 
+                           static_cast<int>(model_path.length()), &wmodel_path[0], size_needed);
+        
+        // セッション作成（ワイド文字列）
+        session_ = std::make_unique<Ort::Session>(*env_, wmodel_path.c_str(), *session_options_);
+#else
+        // Linux/Mac用
+        session_ = std::make_unique<Ort::Session>(*env_, model_path.c_str(), *session_options_);
+#endif
+        
+        // 入力情報取得
+        size_t num_input_nodes = session_->GetInputCount();
+        if (num_input_nodes != 1) {
+            last_error_ = "Expected 1 input node, got " + std::to_string(num_input_nodes);
+            return false;
+        }
+        
+        // 入力名取得
+        auto input_name_alloc = session_->GetInputNameAllocated(0, *allocator_);
+        std::string input_name(input_name_alloc.get());
+        
+        // 入力形状確認
+        auto input_type_info = session_->GetInputTypeInfo(0);
+        auto input_tensor_info = input_type_info.GetTensorTypeAndShapeInfo();
+        auto input_dims = input_tensor_info.GetShape();
+        
+        std::cout << "Model loaded: " << model_path << std::endl;
+        std::cout << "  Input: " << input_name << std::endl;
+        std::cout << "  Input shape: [";
+        for (size_t i = 0; i < input_dims.size(); i++) {
+            std::cout << input_dims[i];
+            if (i < input_dims.size() - 1) std::cout << ", ";
+        }
+        std::cout << "]" << std::endl;
+        
+        // 出力情報取得
+        size_t num_output_nodes = session_->GetOutputCount();
+        if (num_output_nodes != 1) {
+            last_error_ = "Expected 1 output node, got " + std::to_string(num_output_nodes);
+            return false;
+        }
+        
+        // 出力名取得
+        auto output_name_alloc = session_->GetOutputNameAllocated(0, *allocator_);
+        std::string output_name(output_name_alloc.get());
+        
+        std::cout << "  Output: " << output_name << std::endl;
+        
+        is_loaded_ = true;
+        last_error_.clear();
+        return true;
+    }
+    catch (const std::exception& e) {
+        last_error_ = std::string("Failed to load model: ") + e.what();
+        std::cerr << last_error_ << std::endl;
+        is_loaded_ = false;
+        return false;
+    }
+}
+
 // マスクをカラー画像に変換（静的メソッド）
 void SegmentationInference::maskToColor(const cv::Mat& mask, cv::Mat& color_mask)
 {
