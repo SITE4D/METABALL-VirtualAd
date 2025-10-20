@@ -82,6 +82,56 @@ def train_one_epoch(
     return avg_loss
 
 
+def validate(
+    model: nn.Module,
+    val_loader: DataLoader,
+    criterion: nn.Module,
+    device: torch.device,
+    epoch: int
+) -> float:
+    """
+    Validate the model
+    
+    Args:
+        model: The model to validate
+        val_loader: Validation data loader
+        criterion: Loss function
+        device: Device to use
+        epoch: Current epoch number
+    
+    Returns:
+        Average validation loss
+    """
+    model.eval()
+    total_loss = 0.0
+    num_batches = len(val_loader)
+    
+    # Progress bar
+    pbar = tqdm(val_loader, desc=f"Epoch {epoch} [Val]")
+    
+    with torch.no_grad():
+        for images, poses in pbar:
+            # Move data to device
+            images = images.to(device)
+            poses = poses.to(device)
+            
+            # Forward pass
+            pred_poses = model(images)
+            loss = criterion(pred_poses, poses)
+            
+            # Update statistics
+            total_loss += loss.item()
+            
+            # Update progress bar
+            pbar.set_postfix({
+                'loss': f'{loss.item():.6f}',
+                'avg_loss': f'{total_loss / (pbar.n + 1):.6f}'
+            })
+    
+    avg_loss = total_loss / num_batches
+    return avg_loss
+
+
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
