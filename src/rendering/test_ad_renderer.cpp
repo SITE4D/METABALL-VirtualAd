@@ -243,4 +243,128 @@ bool testBlendingModes()
     }
 }
 
-// テスト4とmain関数は次のパートで実装
+/**
+ * @brief テスト4: パフォーマンステスト
+ */
+bool testPerformance()
+{
+    std::cout << "\n=== Test 4: Performance Test ===" << std::endl;
+    
+    try {
+        // 初期化
+        AdRenderer renderer;
+        cv::Mat camera_matrix = createDummyCameraMatrix();
+        cv::Mat dist_coeffs = createDummyDistCoeffs();
+        renderer.initialize(camera_matrix, dist_coeffs);
+        
+        // バックネット設定
+        std::vector<cv::Point3f> backnet = createDummyBacknet();
+        renderer.setBacknetPlane(backnet);
+        
+        // 広告テクスチャ設定
+        cv::Mat ad_texture = createDummyAdTexture();
+        renderer.setAdTexture(ad_texture);
+        
+        // カメラポーズ生成
+        cv::Mat rvec, tvec;
+        createDummyPose(rvec, tvec);
+        
+        // 入力画像生成（1920x1080）
+        cv::Mat image = createDummyImage();
+        
+        // 100イテレーション実行
+        const int iterations = 100;
+        std::vector<double> times;
+        
+        cv::Mat output;
+        for (int i = 0; i < iterations; i++) {
+            renderer.render(image, rvec, tvec, output);
+            times.push_back(renderer.getProcessingTime());
+        }
+        
+        // 統計計算
+        double sum = 0.0;
+        double min_time = times[0];
+        double max_time = times[0];
+        
+        for (double t : times) {
+            sum += t;
+            min_time = std::min(min_time, t);
+            max_time = std::max(max_time, t);
+        }
+        
+        double avg_time = sum / iterations;
+        
+        std::cout << "  Iterations: " << iterations << std::endl;
+        std::cout << "  Average time: " << avg_time << " ms" << std::endl;
+        std::cout << "  Min time: " << min_time << " ms" << std::endl;
+        std::cout << "  Max time: " << max_time << " ms" << std::endl;
+        std::cout << "  Target: < 2.0 ms/frame (1920x1080)" << std::endl;
+        
+        std::cout << "Test 4: PASSED" << std::endl;
+        return true;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "ERROR in Test 4: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+/**
+ * @brief メイン関数
+ */
+int main()
+{
+    std::cout << "======================================" << std::endl;
+    std::cout << "AdRenderer Test Program" << std::endl;
+    std::cout << "======================================" << std::endl;
+    
+    int passed = 0;
+    int failed = 0;
+    
+    // テスト1: 初期化
+    if (testInitialization()) {
+        passed++;
+    } else {
+        failed++;
+    }
+    
+    // テスト2: 基本レンダリング
+    if (testBasicRendering()) {
+        passed++;
+    } else {
+        failed++;
+    }
+    
+    std::cout << "\nPress any key to continue..." << std::endl;
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+    
+    // テスト3: ブレンディングモード
+    if (testBlendingModes()) {
+        passed++;
+    } else {
+        failed++;
+    }
+    
+    std::cout << "\nPress any key to continue..." << std::endl;
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+    
+    // テスト4: パフォーマンス
+    if (testPerformance()) {
+        passed++;
+    } else {
+        failed++;
+    }
+    
+    // 結果サマリー
+    std::cout << "\n======================================" << std::endl;
+    std::cout << "Test Summary" << std::endl;
+    std::cout << "======================================" << std::endl;
+    std::cout << "Passed: " << passed << " / " << (passed + failed) << std::endl;
+    std::cout << "Failed: " << failed << " / " << (passed + failed) << std::endl;
+    std::cout << "======================================" << std::endl;
+    
+    return (failed == 0) ? 0 : 1;
+}
