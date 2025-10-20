@@ -134,6 +134,22 @@ target_link_libraries(Keyer
         onnxruntime::onnxruntime
 )
 
+# Renderingライブラリ（Phase 5）
+add_library(Rendering STATIC
+    src/rendering/AdRenderer.cpp
+)
+
+target_include_directories(Rendering
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
+        ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(Rendering
+    PUBLIC
+        ${OpenCV_LIBS}
+)
+
 # サブディレクトリ（Phase 2以降で追加）
 # add_subdirectory(src/ai)
 # add_subdirectory(src/rendering)
@@ -274,6 +290,17 @@ target_link_libraries(TestDepthCompositor
         ${OpenCV_LIBS}
 )
 
+# 広告レンダリングテストプログラム（Phase 5）
+add_executable(TestAdRenderer
+    src/rendering/test_ad_renderer.cpp
+)
+
+target_link_libraries(TestAdRenderer
+    PRIVATE
+        Rendering
+        ${OpenCV_LIBS}
+)
+
 # インストールターゲット
 install(TARGETS 
     VirtualAd 
@@ -286,6 +313,7 @@ install(TARGETS
     DemoTrackingAI
     TestSegmentation
     TestDepthCompositor
+    TestAdRenderer
     RUNTIME DESTINATION bin
 )
 
