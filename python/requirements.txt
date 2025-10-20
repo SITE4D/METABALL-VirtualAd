@@ -29,6 +29,10 @@ tensorboard>=2.13.0
 # Segment Anything Model (SAM)
 segment-anything>=1.0
 
+# Segmentation (Phase 4)
+albumentations>=1.3.0
+segmentation-models-pytorch>=0.3.0
+
 # Other
 scikit-learn>=1.3.0
 scikit-image>=0.21.0
