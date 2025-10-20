@@ -270,7 +270,60 @@ bool IntegratedPipeline::processFrameSingleThread(std::shared_ptr<FrameData> fra
     std::cout << "[IntegratedPipeline] Tracking: " 
               << frame_data->tracking_time_ms << " ms" << std::endl;
     
-    // TODO: Part 2 - キーヤー処理（次のステップで実装）
+    // ========================================================================
+    // キーヤー処理
+    // ========================================================================
+    auto keyer_start = std::chrono::high_resolution_clock::now();
+    
+    // 1. セグメンテーション推論（SegmentationInference使用）
+    if (segmentation_ && segmentation_->isLoaded()) {
+        cv::Mat seg_mask;
+        if (segmentation_->infer(frame_data->image, seg_mask)) {
+            // セグメンテーションマスクを保存（0=背景、1=選手、2=審判、3=バックネット）
+            frame_data->segmentation_mask = seg_mask;
+            std::cout << "[IntegratedPipeline] Segmentation: Success" << std::endl;
+        } else {
+            std::cerr << "[IntegratedPipeline] WARNING: Segmentation failed: " 
+                      << segmentation_->getLastError() << std::endl;
+            // ダミーマスク作成（全て背景）
+            frame_data->segmentation_mask = cv::Mat::zeros(
+                frame_data->image.size(), CV_8UC1);
+        }
+    } else {
+        // モデル未ロードの場合、ダミーマスク作成
+        std::cout << "[IntegratedPipeline] WARNING: Segmentation model not loaded, using dummy mask" << std::endl;
+        frame_data->segmentation_mask = cv::Mat::zeros(
+            frame_data->image.size(), CV_8UC1);
+    }
+    
+    // 2. デプス推定（DepthEstimator使用）
+    if (depth_estimator_ && depth_estimator_->isLoaded()) {
+        cv::Mat depth;
+        if (depth_estimator_->estimate(frame_data->image, depth)) {
+            // デプスマップを保存（CV_32FC1、0.0=近、1.0=遠）
+            frame_data->depth_map = depth;
+            std::cout << "[IntegratedPipeline] Depth estimation: Success" << std::endl;
+        } else {
+            std::cerr << "[IntegratedPipeline] WARNING: Depth estimation failed: "
+                      << depth_estimator_->getLastError() << std::endl;
+            // ダミーデプスマップ作成（一定値0.5）
+            frame_data->depth_map = cv::Mat::ones(
+                frame_data->image.size(), CV_32FC1) * 0.5f;
+        }
+    } else {
+        // モデル未ロードの場合、ダミーデプスマップ作成
+        std::cout << "[IntegratedPipeline] WARNING: Depth model not loaded, using dummy depth map" << std::endl;
+        frame_data->depth_map = cv::Mat::ones(
+            frame_data->image.size(), CV_32FC1) * 0.5f;
+    }
+    
+    auto keyer_end = std::chrono::high_resolution_clock::now();
+    frame_data->keyer_time_ms = std::chrono::duration<double, std::milli>(
+        keyer_end - keyer_start).count();
+    
+    std::cout << "[IntegratedPipeline] Keyer: " 
+              << frame_data->keyer_time_ms << " ms" << std::endl;
+    
     // TODO: Part 3 - レンダリング・合成処理（次のステップで実装）
     
     return true;
