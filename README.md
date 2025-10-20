@@ -113,14 +113,21 @@ demo_tracking_ai.exe sample.mp4 model.onnx BLENDED 0.75
 - 学習・評価スクリプト
 - ONNX エクスポート
 
+### Phase 2.5: トラッキング基盤（C++）✅
+- 特徴点検出（ORB/AKAZE）
+- 特徴マッチング（Lowe's ratio test + RANSAC）
+- FeatureTracker統合クラス
+- プラナートラッキング実装
+
 ### Phase 3: C++統合とデモ ✅
 - ONNX Runtime C++ ラッパー実装
 - PnP + AI統合（CameraPoseRefiner）
 - デモアプリケーション（`demo_tracking_ai`）
 - 3つの動作モード（PNP_ONLY, AI_ONLY, BLENDED）
 
+**Phase 2.5 完了日**: 2025/10/20
 **Phase 3 完了日**: 2025/10/20
-**最新コミット**: 37b9a63 "Phase 3 Step 3-3b: Add visualization and interactive controls to demo"
+**最新コミット**: 9d0128a "Prepare demo_tracking_ai for FeatureTracker integration"
 
 ## ドキュメント
 
