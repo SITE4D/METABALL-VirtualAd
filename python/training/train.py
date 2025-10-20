@@ -23,6 +23,65 @@ from transforms import get_train_transforms, get_val_transforms
 from models import create_model
 
 
+def train_one_epoch(
+    model: nn.Module,
+    train_loader: DataLoader,
+    criterion: nn.Module,
+    optimizer: optim.Optimizer,
+    device: torch.device,
+    epoch: int,
+    log_interval: int = 10
+) -> float:
+    """
+    Train the model for one epoch
+    
+    Args:
+        model: The model to train
+        train_loader: Training data loader
+        criterion: Loss function
+        optimizer: Optimizer
+        device: Device to use
+        epoch: Current epoch number
+        log_interval: Log interval
+    
+    Returns:
+        Average training loss for the epoch
+    """
+    model.train()
+    total_loss = 0.0
+    num_batches = len(train_loader)
+    
+    # Progress bar
+    pbar = tqdm(train_loader, desc=f"Epoch {epoch} [Train]")
+    
+    for batch_idx, (images, poses) in enumerate(pbar):
+        # Move data to device
+        images = images.to(device)
+        poses = poses.to(device)
+        
+        # Forward pass
+        optimizer.zero_grad()
+        pred_poses = model(images)
+        loss = criterion(pred_poses, poses)
+        
+        # Backward pass
+        loss.backward()
+        optimizer.step()
+        
+        # Update statistics
+        total_loss += loss.item()
+        
+        # Update progress bar
+        if batch_idx % log_interval == 0:
+            pbar.set_postfix({
+                'loss': f'{loss.item():.6f}',
+                'avg_loss': f'{total_loss / (batch_idx + 1):.6f}'
+            })
+    
+    avg_loss = total_loss / num_batches
+    return avg_loss
+
+
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
