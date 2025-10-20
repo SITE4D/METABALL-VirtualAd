@@ -52,6 +52,75 @@ double DepthCompositor::getProcessingTime() const
     return processing_time_;
 }
 
+// 入力画像を検証
+bool DepthCompositor::validateInputs(const cv::Mat& image,
+                                    const cv::Mat& segmentation_mask,
+                                    const cv::Mat& depth_map,
+                                    const cv::Mat& ad_texture)
+{
+    // 入力画像チェック
+    if (image.empty()) {
+        last_error_ = "Empty input image";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    if (image.type() != CV_8UC3) {
+        last_error_ = "Input image must be CV_8UC3 (BGR)";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    // セグメンテーションマスクチェック
+    if (segmentation_mask.empty()) {
+        last_error_ = "Empty segmentation mask";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    if (segmentation_mask.type() != CV_8UC1) {
+        last_error_ = "Segmentation mask must be CV_8UC1";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    if (segmentation_mask.size() != image.size()) {
+        last_error_ = "Segmentation mask size mismatch";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    // デプスマップチェック（オプション）
+    if (!depth_map.empty()) {
+        if (depth_map.type() != CV_32FC1) {
+            last_error_ = "Depth map must be CV_32FC1";
+            std::cerr << "ERROR: " << last_error_ << std::endl;
+            return false;
+        }
+        
+        if (depth_map.size() != image.size()) {
+            last_error_ = "Depth map size mismatch";
+            std::cerr << "ERROR: " << last_error_ << std::endl;
+            return false;
+        }
+    }
+    
+    // 広告テクスチャチェック
+    if (ad_texture.empty()) {
+        last_error_ = "Empty ad texture";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    if (ad_texture.type() != CV_8UC3) {
+        last_error_ = "Ad texture must be CV_8UC3 (BGR)";
+        std::cerr << "ERROR: " << last_error_ << std::endl;
+        return false;
+    }
+    
+    return true;
+}
+
 // 広告テクスチャをリサイズ（静的メソッド）
 void DepthCompositor::resizeAdTexture(const cv::Mat& ad_texture,
                                      const cv::Size& target_size,
