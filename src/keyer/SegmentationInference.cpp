@@ -129,6 +129,42 @@ bool SegmentationInference::loadModel(const std::string& model_path)
     }
 }
 
+// 画像を前処理
+void SegmentationInference::preprocessImage(const cv::Mat& image, std::vector<float>& input_tensor)
+{
+    // リサイズ
+    cv::Mat resized;
+    cv::resize(image, resized, cv::Size(input_size_, input_size_));
+    
+    // BGR → RGB変換
+    cv::Mat rgb;
+    cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
+    
+    // float変換と正規化
+    cv::Mat float_image;
+    rgb.convertTo(float_image, CV_32F, 1.0 / 255.0);
+    
+    // テンソルサイズ確保（[1, 3, H, W]）
+    size_t tensor_size = 1 * 3 * input_size_ * input_size_;
+    input_tensor.resize(tensor_size);
+    
+    // HWC → CHW変換 + ImageNet正規化
+    for (int c = 0; c < 3; c++) {
+        for (int y = 0; y < input_size_; y++) {
+            for (int x = 0; x < input_size_; x++) {
+                float pixel_value = float_image.at<cv::Vec3f>(y, x)[c];
+                
+                // ImageNet正規化
+                pixel_value = (pixel_value - MEAN[c]) / STD[c];
+                
+                // テンソル格納（CHW順）
+                size_t index = c * input_size_ * input_size_ + y * input_size_ + x;
+                input_tensor[index] = pixel_value;
+            }
+        }
+    }
+}
+
 // マスクをカラー画像に変換（静的メソッド）
 void SegmentationInference::maskToColor(const cv::Mat& mask, cv::Mat& color_mask)
 {
