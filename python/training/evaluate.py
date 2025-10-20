@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -261,6 +262,141 @@ def calculate_pose_errors(pred_poses, gt_poses):
     print(f"  Max:    {statistics['translation']['max']:.4f}")
     
     return rotation_errors, translation_errors, statistics
+
+
+def visualize_predictions(pred_poses, gt_poses, errors, output_dir, num_samples=20):
+    """
+    Create visualizations comparing predictions to ground truth.
+    
+    Args:
+        pred_poses: Predicted poses [N, 6]
+        gt_poses: Ground truth poses [N, 6]
+        errors: Reprojection errors [N]
+        output_dir: Directory to save visualizations
+        num_samples: Number of samples to visualize
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"\nGenerating visualizations...")
+    
+    # 1. Rotation vector comparison (rvec)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    for i, axis_name in enumerate(['X', 'Y', 'Z']):
+        axes[i].scatter(gt_poses[:, i], pred_poses[:, i], alpha=0.5, s=10)
+        axes[i].plot([gt_poses[:, i].min(), gt_poses[:, i].max()],
+                     [gt_poses[:, i].min(), gt_poses[:, i].max()],
+                     'r--', label='Perfect prediction')
+        axes[i].set_xlabel(f'Ground Truth rvec_{axis_name}')
+        axes[i].set_ylabel(f'Predicted rvec_{axis_name}')
+        axes[i].set_title(f'Rotation Vector {axis_name}')
+        axes[i].legend()
+        axes[i].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / 'rotation_comparison.png', dpi=150)
+    plt.close()
+    print(f"Saved: {output_dir / 'rotation_comparison.png'}")
+    
+    # 2. Translation vector comparison (tvec)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    for i, axis_name in enumerate(['X', 'Y', 'Z']):
+        axes[i].scatter(gt_poses[:, i+3], pred_poses[:, i+3], alpha=0.5, s=10)
+        axes[i].plot([gt_poses[:, i+3].min(), gt_poses[:, i+3].max()],
+                     [gt_poses[:, i+3].min(), gt_poses[:, i+3].max()],
+                     'r--', label='Perfect prediction')
+        axes[i].set_xlabel(f'Ground Truth tvec_{axis_name}')
+        axes[i].set_ylabel(f'Predicted tvec_{axis_name}')
+        axes[i].set_title(f'Translation Vector {axis_name}')
+        axes[i].legend()
+        axes[i].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / 'translation_comparison.png', dpi=150)
+    plt.close()
+    print(f"Saved: {output_dir / 'translation_comparison.png'}")
+    
+    # 3. Error distribution histogram
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.hist(errors, bins=50, alpha=0.7, edgecolor='black')
+    ax.axvline(np.mean(errors), color='r', linestyle='--', linewidth=2, label=f'Mean: {np.mean(errors):.2f}')
+    ax.axvline(np.median(errors), color='g', linestyle='--', linewidth=2, label=f'Median: {np.median(errors):.2f}')
+    ax.set_xlabel('Reprojection Error (pixels)')
+    ax.set_ylabel('Frequency')
+    ax.set_title('Reprojection Error Distribution')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / 'error_distribution.png', dpi=150)
+    plt.close()
+    print(f"Saved: {output_dir / 'error_distribution.png'}")
+    
+    # 4. Error vs sample index (to check for systematic errors)
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.plot(errors, alpha=0.6, linewidth=0.5)
+    ax.axhline(np.mean(errors), color='r', linestyle='--', linewidth=2, label=f'Mean: {np.mean(errors):.2f}')
+    ax.set_xlabel('Sample Index')
+    ax.set_ylabel('Reprojection Error (pixels)')
+    ax.set_title('Reprojection Error per Sample')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / 'error_per_sample.png', dpi=150)
+    plt.close()
+    print(f"Saved: {output_dir / 'error_per_sample.png'}")
+    
+    print("Visualization complete!")
+
+
+def save_detailed_results(pred_poses, gt_poses, errors, output_dir, num_samples=20):
+    """
+    Save detailed per-sample results to text file.
+    
+    Args:
+        pred_poses: Predicted poses [N, 6]
+        gt_poses: Ground truth poses [N, 6]
+        errors: Reprojection errors [N]
+        output_dir: Directory to save results
+        num_samples: Number of samples to include in detailed output
+    """
+    output_dir = Path(output_dir)
+    output_path = output_dir / 'detailed_results.txt'
+    
+    with open(output_path, 'w') as f:
+        f.write("=" * 80 + "\n")
+        f.write("DETAILED EVALUATION RESULTS\n")
+        f.write("=" * 80 + "\n\n")
+        
+        # Overall statistics
+        f.write("Overall Statistics:\n")
+        f.write(f"  Total samples: {len(pred_poses)}\n")
+        f.write(f"  Mean error: {np.mean(errors):.4f} pixels\n")
+        f.write(f"  Median error: {np.median(errors):.4f} pixels\n")
+        f.write(f"  Std error: {np.std(errors):.4f} pixels\n")
+        f.write(f"  Min error: {np.min(errors):.4f} pixels\n")
+        f.write(f"  Max error: {np.max(errors):.4f} pixels\n\n")
+        
+        # Best and worst samples
+        best_indices = np.argsort(errors)[:num_samples]
+        worst_indices = np.argsort(errors)[-num_samples:][::-1]
+        
+        f.write(f"\nBest {num_samples} Predictions (lowest error):\n")
+        f.write("-" * 80 + "\n")
+        for idx in best_indices:
+            f.write(f"Sample {idx}: Error = {errors[idx]:.4f} pixels\n")
+            f.write(f"  Predicted: rvec={pred_poses[idx, :3]}, tvec={pred_poses[idx, 3:]}\n")
+            f.write(f"  Ground Truth: rvec={gt_poses[idx, :3]}, tvec={gt_poses[idx, 3:]}\n\n")
+        
+        f.write(f"\nWorst {num_samples} Predictions (highest error):\n")
+        f.write("-" * 80 + "\n")
+        for idx in worst_indices:
+            f.write(f"Sample {idx}: Error = {errors[idx]:.4f} pixels\n")
+            f.write(f"  Predicted: rvec={pred_poses[idx, :3]}, tvec={pred_poses[idx, 3:]}\n")
+            f.write(f"  Ground Truth: rvec={gt_poses[idx, :3]}, tvec={gt_poses[idx, 3:]}\n\n")
+    
+    print(f"Saved detailed results: {output_path}")
 
 
 def parse_args():
