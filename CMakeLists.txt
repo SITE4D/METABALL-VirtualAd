@@ -80,6 +80,7 @@ target_link_libraries(Tools
 add_library(Tracking STATIC
     src/tracking/FeatureDetector.cpp
     src/tracking/FeatureMatcher.cpp
+    src/tracking/PnPSolver.cpp
 )
 
 target_include_directories(Tracking
