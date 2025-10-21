@@ -30,13 +30,18 @@ endif()
 # パッケージの検索
 
 find_package(OpenCV 4.8 REQUIRED)
-find_package(onnxruntime REQUIRED)  # Phase 3で有効化
+find_package(onnxruntime QUIET)  # Phase 3で有効化、見つからない場合は警告のみ
 # find_package(Qt6 COMPONENTS Widgets REQUIRED)  # Phase 1以降で有効化
 
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
-message(STATUS "ONNX Runtime found")
+
+if(onnxruntime_FOUND)
+    message(STATUS "ONNX Runtime found")
+else()
+    message(WARNING "ONNX Runtime not found - AI inference features will be disabled")
+endif()
 
 # インクルードディレクトリ
 include_directories(${CMAKE_SOURCE_DIR}/src)
@@ -97,42 +102,62 @@ target_link_libraries(Tracking
 )
 
 # Inferenceライブラリ（Phase 3）
-add_library(Inference STATIC
-    src/inference/ONNXInference.cpp
-    src/inference/CameraPoseRefiner.cpp
-)
+if(onnxruntime_FOUND)
+    add_library(Inference STATIC
+        src/inference/ONNXInference.cpp
+        src/inference/CameraPoseRefiner.cpp
+    )
 
-target_include_directories(Inference
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/src
-        ${OpenCV_INCLUDE_DIRS}
-)
+    target_include_directories(Inference
+        PUBLIC
+            ${CMAKE_SOURCE_DIR}/src
+            ${OpenCV_INCLUDE_DIRS}
+    )
 
-target_link_libraries(Inference
-    PUBLIC
-        ${OpenCV_LIBS}
-        onnxruntime::onnxruntime
-        Tracking
-)
+    target_link_libraries(Inference
+        PUBLIC
+            ${OpenCV_LIBS}
+            onnxruntime::onnxruntime
+            Tracking
+    )
+endif()
 
 # Keyerライブラリ（Phase 4）
-add_library(Keyer STATIC
-    src/keyer/SegmentationInference.cpp
-    src/keyer/DepthEstimator.cpp
-    src/keyer/DepthCompositor.cpp
-)
+if(onnxruntime_FOUND)
+    add_library(Keyer STATIC
+        src/keyer/SegmentationInference.cpp
+        src/keyer/DepthEstimator.cpp
+        src/keyer/DepthCompositor.cpp
+    )
 
-target_include_directories(Keyer
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/src
-        ${OpenCV_INCLUDE_DIRS}
-)
+    target_include_directories(Keyer
+        PUBLIC
+            ${CMAKE_SOURCE_DIR}/src
+            ${OpenCV_INCLUDE_DIRS}
+    )
 
-target_link_libraries(Keyer
-    PUBLIC
-        ${OpenCV_LIBS}
-        onnxruntime::onnxruntime
-)
+    target_link_libraries(Keyer
+        PUBLIC
+            ${OpenCV_LIBS}
+            onnxruntime::onnxruntime
+    )
+else()
+    # onnxruntime not found - create Keyer with only DepthCompositor
+    add_library(Keyer STATIC
+        src/keyer/DepthCompositor.cpp
+    )
+
+    target_include_directories(Keyer
+        PUBLIC
+            ${CMAKE_SOURCE_DIR}/src
+            ${OpenCV_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(Keyer
+        PUBLIC
+            ${OpenCV_LIBS}
+    )
+endif()
 
 # Renderingライブラリ（Phase 5）
 add_library(Rendering STATIC
@@ -161,14 +186,24 @@ target_include_directories(Integration
         ${OpenCV_INCLUDE_DIRS}
 )
 
-target_link_libraries(Integration
-    PUBLIC
-        ${OpenCV_LIBS}
-        Tracking
-        Inference
-        Keyer
-        Rendering
-)
+if(onnxruntime_FOUND)
+    target_link_libraries(Integration
+        PUBLIC
+            ${OpenCV_LIBS}
+            Tracking
+            Inference
+            Keyer
+            Rendering
+    )
+else()
+    target_link_libraries(Integration
+        PUBLIC
+            ${OpenCV_LIBS}
+            Tracking
+            Keyer
+            Rendering
+    )
+endif()
 
 # サブディレクトリ（Phase 2以降で追加）
 # add_subdirectory(src/ai)
@@ -249,55 +284,63 @@ target_link_libraries(TestFeatureTracking
 )
 
 # ONNX推論テストプログラム（Phase 3）
-add_executable(TestONNXInference
-    src/inference/test_onnx_inference.cpp
-)
+if(onnxruntime_FOUND)
+    add_executable(TestONNXInference
+        src/inference/test_onnx_inference.cpp
+    )
 
-target_link_libraries(TestONNXInference
-    PRIVATE
-        Inference
-        ${OpenCV_LIBS}
-        onnxruntime::onnxruntime
-)
+    target_link_libraries(TestONNXInference
+        PRIVATE
+            Inference
+            ${OpenCV_LIBS}
+            onnxruntime::onnxruntime
+    )
+endif()
 
 # ポーズ補正テストプログラム（Phase 3）
-add_executable(TestPoseRefinement
-    src/inference/test_pose_refinement.cpp
-)
+if(onnxruntime_FOUND)
+    add_executable(TestPoseRefinement
+        src/inference/test_pose_refinement.cpp
+    )
 
-target_link_libraries(TestPoseRefinement
-    PRIVATE
-        Core
-        Inference
-        ${OpenCV_LIBS}
-        onnxruntime::onnxruntime
-)
+    target_link_libraries(TestPoseRefinement
+        PRIVATE
+            Core
+            Inference
+            ${OpenCV_LIBS}
+            onnxruntime::onnxruntime
+    )
+endif()
 
 # AIトラッキングデモ（Phase 3）
-add_executable(DemoTrackingAI
-    src/inference/demo_tracking_ai.cpp
-)
+if(onnxruntime_FOUND)
+    add_executable(DemoTrackingAI
+        src/inference/demo_tracking_ai.cpp
+    )
 
-target_link_libraries(DemoTrackingAI
-    PRIVATE
-        Core
-        Tracking
-        Inference
-        ${OpenCV_LIBS}
-        onnxruntime::onnxruntime
-)
+    target_link_libraries(DemoTrackingAI
+        PRIVATE
+            Core
+            Tracking
+            Inference
+            ${OpenCV_LIBS}
+            onnxruntime::onnxruntime
+    )
+endif()
 
 # セグメンテーションテストプログラム（Phase 4）
-add_executable(TestSegmentation
-    src/keyer/test_segmentation.cpp
-)
+if(onnxruntime_FOUND)
+    add_executable(TestSegmentation
+        src/keyer/test_segmentation.cpp
+    )
 
-target_link_libraries(TestSegmentation
-    PRIVATE
-        Keyer
-        ${OpenCV_LIBS}
-        onnxruntime::onnxruntime
-)
+    target_link_libraries(TestSegmentation
+        PRIVATE
+            Keyer
+            ${OpenCV_LIBS}
+            onnxruntime::onnxruntime
+    )
+endif()
 
 # デプス合成テストプログラム（Phase 4）
 add_executable(TestDepthCompositor
@@ -339,14 +382,22 @@ install(TARGETS
     TestFeatureDetection 
     TestFeatureMatching 
     TestFeatureTracking
-    TestONNXInference
-    TestPoseRefinement
-    DemoTrackingAI
-    TestSegmentation
     TestDepthCompositor
     TestAdRenderer
+    TestIntegratedPipeline
     RUNTIME DESTINATION bin
 )
+
+# onnxruntime依存のターゲット（条件付き）
+if(onnxruntime_FOUND)
+    install(TARGETS
+        TestONNXInference
+        TestPoseRefinement
+        DemoTrackingAI
+        TestSegmentation
+        RUNTIME DESTINATION bin
+    )
+endif()
 
 # メッセージ
 message(STATUS "==============================================")

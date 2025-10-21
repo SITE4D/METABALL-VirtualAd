@@ -6,9 +6,12 @@
 #include "ThreadSafeQueue.h"
 #include "../tracking/FeatureTracker.h"
 #include "../tracking/PnPSolver.h"
-#include "../inference/CameraPoseRefiner.h"
-#include "../keyer/SegmentationInference.h"
-#include "../keyer/DepthEstimator.h"
+
+// ONNX Runtime-dependent includes - comment out when onnxruntime is not available
+// #include "../inference/CameraPoseRefiner.h"
+// #include "../keyer/SegmentationInference.h"
+// #include "../keyer/DepthEstimator.h"
+
 #include "../keyer/DepthCompositor.h"
 #include "../rendering/AdRenderer.h"
 
@@ -98,9 +101,12 @@ private:
     
     std::unique_ptr<Tracking::FeatureTracker> tracker_;
     std::unique_ptr<Tracking::PnPSolver> pnp_solver_;
-    std::unique_ptr<Inference::CameraPoseRefiner> pose_refiner_;
-    std::unique_ptr<Keyer::SegmentationInference> segmentation_;
-    std::unique_ptr<Keyer::DepthEstimator> depth_estimator_;
+    
+    // ONNX Runtime-dependent components - comment out when onnxruntime is not available
+    // std::unique_ptr<Inference::CameraPoseRefiner> pose_refiner_;
+    // std::unique_ptr<Keyer::SegmentationInference> segmentation_;
+    // std::unique_ptr<Keyer::DepthEstimator> depth_estimator_;
+    
     std::unique_ptr<Keyer::DepthCompositor> compositor_;
     std::unique_ptr<Rendering::AdRenderer> renderer_;
     

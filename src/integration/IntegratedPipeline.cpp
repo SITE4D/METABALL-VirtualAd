@@ -70,53 +70,56 @@ bool IntegratedPipeline::initialize(const PipelineConfig& config) {
         return false;
     }
     
-    // CameraPoseRefiner初期化
-    try {
-        pose_refiner_ = std::make_unique<Inference::CameraPoseRefiner>(pnp_solver_);
-        if (!pose_refiner_->loadModel(config.camera_pose_model_path)) {
-            std::cerr << "[IntegratedPipeline] ERROR: Failed to load camera pose model: " 
-                      << config.camera_pose_model_path << std::endl;
-            // 注: モデル読み込みは任意（PnPのみでも動作可能）
-            std::cout << "[IntegratedPipeline] WARNING: CameraPoseRefiner will use PnP only" << std::endl;
-        }
-        std::cout << "[IntegratedPipeline] CameraPoseRefiner initialized" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "[IntegratedPipeline] ERROR: Failed to create CameraPoseRefiner: " 
-                  << e.what() << std::endl;
-        return false;
-    }
+    // CameraPoseRefiner初期化 - ONNX Runtime required (commented out)
+    // try {
+    //     pose_refiner_ = std::make_unique<Inference::CameraPoseRefiner>(pnp_solver_);
+    //     if (!pose_refiner_->loadModel(config.camera_pose_model_path)) {
+    //         std::cerr << "[IntegratedPipeline] ERROR: Failed to load camera pose model: " 
+    //                   << config.camera_pose_model_path << std::endl;
+    //         // 注: モデル読み込みは任意（PnPのみでも動作可能）
+    //         std::cout << "[IntegratedPipeline] WARNING: CameraPoseRefiner will use PnP only" << std::endl;
+    //     }
+    //     std::cout << "[IntegratedPipeline] CameraPoseRefiner initialized" << std::endl;
+    // } catch (const std::exception& e) {
+    //     std::cerr << "[IntegratedPipeline] ERROR: Failed to create CameraPoseRefiner: " 
+    //               << e.what() << std::endl;
+    //     return false;
+    // }
+    std::cout << "[IntegratedPipeline] WARNING: CameraPoseRefiner disabled (ONNX Runtime not available)" << std::endl;
     
-    // SegmentationInference初期化
-    try {
-        segmentation_ = std::make_unique<Keyer::SegmentationInference>();
-        if (!segmentation_->loadModel(config.segmentation_model_path)) {
-            std::cerr << "[IntegratedPipeline] ERROR: Failed to load segmentation model: " 
-                      << config.segmentation_model_path << std::endl;
-            // 注: モデル読み込みは任意
-            std::cout << "[IntegratedPipeline] WARNING: Segmentation will be skipped" << std::endl;
-        }
-        std::cout << "[IntegratedPipeline] SegmentationInference initialized" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "[IntegratedPipeline] ERROR: Failed to create SegmentationInference: " 
-                  << e.what() << std::endl;
-        return false;
-    }
+    // SegmentationInference初期化 - ONNX Runtime required (commented out)
+    // try {
+    //     segmentation_ = std::make_unique<Keyer::SegmentationInference>();
+    //     if (!segmentation_->loadModel(config.segmentation_model_path)) {
+    //         std::cerr << "[IntegratedPipeline] ERROR: Failed to load segmentation model: " 
+    //                   << config.segmentation_model_path << std::endl;
+    //         // 注: モデル読み込みは任意
+    //         std::cout << "[IntegratedPipeline] WARNING: Segmentation will be skipped" << std::endl;
+    //     }
+    //     std::cout << "[IntegratedPipeline] SegmentationInference initialized" << std::endl;
+    // } catch (const std::exception& e) {
+    //     std::cerr << "[IntegratedPipeline] ERROR: Failed to create SegmentationInference: " 
+    //               << e.what() << std::endl;
+    //     return false;
+    // }
+    std::cout << "[IntegratedPipeline] WARNING: SegmentationInference disabled (ONNX Runtime not available)" << std::endl;
     
-    // DepthEstimator初期化
-    try {
-        depth_estimator_ = std::make_unique<Keyer::DepthEstimator>();
-        if (!depth_estimator_->loadModel(config.depth_model_path)) {
-            std::cerr << "[IntegratedPipeline] ERROR: Failed to load depth model: " 
-                      << config.depth_model_path << std::endl;
-            // 注: モデル読み込みは任意
-            std::cout << "[IntegratedPipeline] WARNING: Depth estimation will be skipped" << std::endl;
-        }
-        std::cout << "[IntegratedPipeline] DepthEstimator initialized" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "[IntegratedPipeline] ERROR: Failed to create DepthEstimator: " 
-                  << e.what() << std::endl;
-        return false;
-    }
+    // DepthEstimator初期化 - ONNX Runtime required (commented out)
+    // try {
+    //     depth_estimator_ = std::make_unique<Keyer::DepthEstimator>();
+    //     if (!depth_estimator_->loadModel(config.depth_model_path)) {
+    //         std::cerr << "[IntegratedPipeline] ERROR: Failed to load depth model: " 
+    //                   << config.depth_model_path << std::endl;
+    //         // 注: モデル読み込みは任意
+    //         std::cout << "[IntegratedPipeline] WARNING: Depth estimation will be skipped" << std::endl;
+    //     }
+    //     std::cout << "[IntegratedPipeline] DepthEstimator initialized" << std::endl;
+    // } catch (const std::exception& e) {
+    //     std::cerr << "[IntegratedPipeline] ERROR: Failed to create DepthEstimator: " 
+    //               << e.what() << std::endl;
+    //     return false;
+    // }
+    std::cout << "[IntegratedPipeline] WARNING: DepthEstimator disabled (ONNX Runtime not available)" << std::endl;
     
     // DepthCompositor初期化
     try {
@@ -275,47 +278,55 @@ bool IntegratedPipeline::processFrameSingleThread(std::shared_ptr<FrameData> fra
     // ========================================================================
     auto keyer_start = std::chrono::high_resolution_clock::now();
     
-    // 1. セグメンテーション推論（SegmentationInference使用）
-    if (segmentation_ && segmentation_->isLoaded()) {
-        cv::Mat seg_mask;
-        if (segmentation_->infer(frame_data->image, seg_mask)) {
-            // セグメンテーションマスクを保存（0=背景、1=選手、2=審判、3=バックネット）
-            frame_data->segmentation_mask = seg_mask;
-            std::cout << "[IntegratedPipeline] Segmentation: Success" << std::endl;
-        } else {
-            std::cerr << "[IntegratedPipeline] WARNING: Segmentation failed: " 
-                      << segmentation_->getLastError() << std::endl;
-            // ダミーマスク作成（全て背景）
-            frame_data->segmentation_mask = cv::Mat::zeros(
-                frame_data->image.size(), CV_8UC1);
-        }
-    } else {
-        // モデル未ロードの場合、ダミーマスク作成
-        std::cout << "[IntegratedPipeline] WARNING: Segmentation model not loaded, using dummy mask" << std::endl;
-        frame_data->segmentation_mask = cv::Mat::zeros(
-            frame_data->image.size(), CV_8UC1);
-    }
+    // 1. セグメンテーション推論（SegmentationInference使用）- ONNX Runtime required (commented out)
+    // if (segmentation_ && segmentation_->isLoaded()) {
+    //     cv::Mat seg_mask;
+    //     if (segmentation_->infer(frame_data->image, seg_mask)) {
+    //         // セグメンテーションマスクを保存（0=背景、1=選手、2=審判、3=バックネット）
+    //         frame_data->segmentation_mask = seg_mask;
+    //         std::cout << "[IntegratedPipeline] Segmentation: Success" << std::endl;
+    //     } else {
+    //         std::cerr << "[IntegratedPipeline] WARNING: Segmentation failed: " 
+    //                   << segmentation_->getLastError() << std::endl;
+    //         // ダミーマスク作成（全て背景）
+    //         frame_data->segmentation_mask = cv::Mat::zeros(
+    //             frame_data->image.size(), CV_8UC1);
+    //     }
+    // } else {
+    //     // モデル未ロードの場合、ダミーマスク作成
+    //     std::cout << "[IntegratedPipeline] WARNING: Segmentation model not loaded, using dummy mask" << std::endl;
+    //     frame_data->segmentation_mask = cv::Mat::zeros(
+    //         frame_data->image.size(), CV_8UC1);
+    // }
     
-    // 2. デプス推定（DepthEstimator使用）
-    if (depth_estimator_ && depth_estimator_->isLoaded()) {
-        cv::Mat depth;
-        if (depth_estimator_->estimate(frame_data->image, depth)) {
-            // デプスマップを保存（CV_32FC1、0.0=近、1.0=遠）
-            frame_data->depth_map = depth;
-            std::cout << "[IntegratedPipeline] Depth estimation: Success" << std::endl;
-        } else {
-            std::cerr << "[IntegratedPipeline] WARNING: Depth estimation failed: "
-                      << depth_estimator_->getLastError() << std::endl;
-            // ダミーデプスマップ作成（一定値0.5）
-            frame_data->depth_map = cv::Mat::ones(
-                frame_data->image.size(), CV_32FC1) * 0.5f;
-        }
-    } else {
-        // モデル未ロードの場合、ダミーデプスマップ作成
-        std::cout << "[IntegratedPipeline] WARNING: Depth model not loaded, using dummy depth map" << std::endl;
-        frame_data->depth_map = cv::Mat::ones(
-            frame_data->image.size(), CV_32FC1) * 0.5f;
-    }
+    // ダミーマスク作成（全て背景）- ONNX Runtime not available
+    std::cout << "[IntegratedPipeline] INFO: Using dummy segmentation mask (ONNX Runtime not available)" << std::endl;
+    frame_data->segmentation_mask = cv::Mat::zeros(frame_data->image.size(), CV_8UC1);
+    
+    // 2. デプス推定（DepthEstimator使用）- ONNX Runtime required (commented out)
+    // if (depth_estimator_ && depth_estimator_->isLoaded()) {
+    //     cv::Mat depth;
+    //     if (depth_estimator_->estimate(frame_data->image, depth)) {
+    //         // デプスマップを保存（CV_32FC1、0.0=近、1.0=遠）
+    //         frame_data->depth_map = depth;
+    //         std::cout << "[IntegratedPipeline] Depth estimation: Success" << std::endl;
+    //     } else {
+    //         std::cerr << "[IntegratedPipeline] WARNING: Depth estimation failed: "
+    //                   << depth_estimator_->getLastError() << std::endl;
+    //         // ダミーデプスマップ作成（一定値0.5）
+    //         frame_data->depth_map = cv::Mat::ones(
+    //             frame_data->image.size(), CV_32FC1) * 0.5f;
+    //     }
+    // } else {
+    //     // モデル未ロードの場合、ダミーデプスマップ作成
+    //     std::cout << "[IntegratedPipeline] WARNING: Depth model not loaded, using dummy depth map" << std::endl;
+    //     frame_data->depth_map = cv::Mat::ones(
+    //         frame_data->image.size(), CV_32FC1) * 0.5f;
+    // }
+    
+    // ダミーデプスマップ作成（一定値0.5）- ONNX Runtime not available
+    std::cout << "[IntegratedPipeline] INFO: Using dummy depth map (ONNX Runtime not available)" << std::endl;
+    frame_data->depth_map = cv::Mat::ones(frame_data->image.size(), CV_32FC1) * 0.5f;
     
     auto keyer_end = std::chrono::high_resolution_clock::now();
     frame_data->keyer_time_ms = std::chrono::duration<double, std::milli>(
@@ -396,8 +407,17 @@ bool IntegratedPipeline::processFrameSingleThread(std::shared_ptr<FrameData> fra
     {
         std::lock_guard<std::mutex> lock(stats_mutex_);
         statistics_.total_frames++;
-        statistics_.updateFrameTime(frame_data->total_time_ms);
-        statistics_.updateFPS(frame_data->timestamp);
+        statistics_.updateFrameTime(
+            frame_data->tracking_time_ms,
+            frame_data->keyer_time_ms,
+            frame_data->rendering_time_ms,
+            frame_data->total_time_ms
+        );
+        
+        // FPS計算（1000ms / 処理時間ms）
+        double current_fps = (frame_data->total_time_ms > 0.0) ? 
+            (1000.0 / frame_data->total_time_ms) : 0.0;
+        statistics_.updateFPS(current_fps);
     }
     
     std::cout << "[IntegratedPipeline] Total processing time: " 
