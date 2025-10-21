@@ -52,8 +52,16 @@ bool IntegratedPipeline::initialize(const PipelineConfig& config) {
     
     // FeatureTracker初期化
     try {
-        tracker_ = std::make_unique<Tracking::FeatureTracker>();
-        std::cout << "[IntegratedPipeline] FeatureTracker initialized" << std::endl;
+        // デフォルトカメラパラメータ（Full HD: 1920x1080）
+        Tracking::CameraIntrinsics intrinsics = Tracking::CameraIntrinsics::createDefaultFullHD();
+        
+        // ORB特徴検出器を使用
+        tracker_ = std::make_unique<Tracking::FeatureTracker>(
+            Tracking::FeatureDetectorType::ORB,
+            intrinsics,
+            1000  // max_features
+        );
+        std::cout << "[IntegratedPipeline] FeatureTracker initialized (ORB, 1000 features)" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[IntegratedPipeline] ERROR: Failed to create FeatureTracker: " 
                   << e.what() << std::endl;
@@ -62,7 +70,10 @@ bool IntegratedPipeline::initialize(const PipelineConfig& config) {
     
     // PnPSolver初期化
     try {
-        pnp_solver_ = std::make_unique<Tracking::PnPSolver>();
+        // デフォルトカメラパラメータ（Full HD: 1920x1080）
+        Tracking::CameraIntrinsics intrinsics = Tracking::CameraIntrinsics::createDefaultFullHD();
+        
+        pnp_solver_ = std::make_unique<Tracking::PnPSolver>(intrinsics);
         std::cout << "[IntegratedPipeline] PnPSolver initialized" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[IntegratedPipeline] ERROR: Failed to create PnPSolver: " 

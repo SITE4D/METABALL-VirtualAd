@@ -118,9 +118,9 @@ int main(int argc, char** argv) {
     std::cout << std::endl;
     
     std::cout << "Frame Time Statistics:" << std::endl;
-    std::cout << "  Average: " << stats.avg_frame_time_ms << " ms" << std::endl;
-    std::cout << "  Min: " << stats.min_frame_time_ms << " ms" << std::endl;
-    std::cout << "  Max: " << stats.max_frame_time_ms << " ms" << std::endl;
+    std::cout << "  Average: " << stats.avg_total_time_ms << " ms" << std::endl;
+    std::cout << "  Min: " << stats.min_total_time_ms << " ms" << std::endl;
+    std::cout << "  Max: " << stats.max_total_time_ms << " ms" << std::endl;
     std::cout << std::endl;
     
     std::cout << "FPS Statistics:" << std::endl;
