@@ -375,6 +375,17 @@ target_link_libraries(TestIntegratedPipeline
         ${OpenCV_LIBS}
 )
 
+# 統合パイプライン動画テストプログラム（Phase 6）
+add_executable(TestIntegratedPipelineVideo
+    src/integration/test_integrated_pipeline_video.cpp
+)
+
+target_link_libraries(TestIntegratedPipelineVideo
+    PRIVATE
+        Integration
+        ${OpenCV_LIBS}
+)
+
 # インストールターゲット
 install(TARGETS 
     VirtualAd 
@@ -385,6 +396,7 @@ install(TARGETS
     TestDepthCompositor
     TestAdRenderer
     TestIntegratedPipeline
+    TestIntegratedPipelineVideo
     RUNTIME DESTINATION bin
 )
 
